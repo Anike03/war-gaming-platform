@@ -1,0 +1,9 @@
+export { default as GameList } from './GameList';
+export { default as GameModal } from './GameModal';
+export { default as NumberGrid } from './NumberGrid';
+export { default as ColorGrid } from './ColorGrid';
+export { default as TicTacToe } from './TicTacToe';
+export { default as QuizQuest } from './QuizQuest';
+export { default as Chess } from './Chess';
+export { default as Sudoku } from './Sudoku';
+export { default as Crossword } from './Crossword';
