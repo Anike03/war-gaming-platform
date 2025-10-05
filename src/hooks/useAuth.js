@@ -1,44 +1,50 @@
-import { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+// src/hooks/useAuth.js
+// Use the hook that AuthContext already exports.
+import { useAuth as useAuthContext } from "../context/AuthContext";
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  
-  return context;
-};
+export const useAuth = () => useAuthContext();
 
-// Additional auth-related hooks
+// Handy selectors
 export const useUserData = () => {
-  const { userData } = useAuth();
+  const { userData } = useAuthContext();
   return userData;
 };
 
 export const useIsAdmin = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin } = useAuthContext();
   return isAdmin;
 };
 
 export const usePoints = () => {
-  const { userData, addPoints, deductPoints } = useAuth();
+  const { userData, addPoints, deductPoints } = useAuthContext();
   return {
     points: userData?.points || 0,
     addPoints,
-    deductPoints
+    deductPoints,
   };
 };
 
+// Actions (include admin + reset password)
 export const useAuthActions = () => {
-  const { login, signup, googleSignIn, logout, updateUserProfile, updateUserData } = useAuth();
+  const {
+    login,
+    signup,
+    loginAdminOnly,     // <-- make sure this exists in AuthContext (it does in the version I gave you)
+    googleSignIn,
+    logout,
+    resetPassword,
+    updateUserProfile,
+    updateUserData,
+  } = useAuthContext();
+
   return {
     login,
     signup,
+    loginAdminOnly,
     googleSignIn,
     logout,
+    resetPassword,
     updateUserProfile,
-    updateUserData
+    updateUserData,
   };
 };

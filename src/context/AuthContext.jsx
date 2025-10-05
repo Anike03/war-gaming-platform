@@ -1,306 +1,265 @@
-// AuthContext.jsx
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
+// src/context/AuthContext.jsx
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
   onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
-  sendPasswordResetEmail // Added this import
-} from 'firebase/auth';
-import { auth, db } from '../utils/firebase';
-import { doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+  sendPasswordResetEmail,
+} from "firebase/auth";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  orderBy,
+  getDocs,
+} from "firebase/firestore";
+import { auth, db, ADMIN_EMAIL, ADMIN_PASSWORD } from "../utils/firebase";
 
-export const AuthContext = createContext();
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
+const AuthContext = createContext(null);
+export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);  // Firebase Auth user
+  const [userData, setUserData] = useState(null);        // Firestore profile
   const [authError, setAuthError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Admin credentials
-  const ADMIN_EMAIL = "aniketsharma9360@gmail.com";
-  const ADMIN_PASSWORD = "admin@aniket#00";
+  // ---------- Firestore helpers ----------
+  const userRef = (uid) => doc(db, "users", uid);
 
-  // Add password reset function
-  function resetPassword(email) {
-    return sendPasswordResetEmail(auth, email);
-  }
+  const createUserDocument = async (user, extra = {}) => {
+    if (!user?.uid) return null;
+    const ref = userRef(user.uid);
+    const snap = await getDoc(ref);
 
-  function signup(email, password, additionalData = {}) {
-    return createUserWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        return createUserDocument(userCredential.user, additionalData);
-      })
-      .catch((error) => {
-        setAuthError(error.message);
-        throw error;
-      });
-  }
-
-  function login(email, password) {
-    setAuthError(null);
-    // Handle admin login
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      return signInWithEmailAndPassword(auth, email, password)
-        .catch((error) => {
-          setAuthError(error.message);
-          throw error;
-        });
+    if (!snap.exists()) {
+      // first time: create a profile
+      const base = {
+        uid: user.uid,
+        email: user.email ?? "",
+        displayName: user.displayName ?? (user.email ? user.email.split("@")[0] : ""),
+        photoURL: user.photoURL ?? null,
+        points: 0,
+        status: "active",
+        isAdmin: false,
+        createdAt: serverTimestamp(),
+      };
+      await setDoc(ref, { ...base, ...extra });
+      return { ...(base), ...extra };
+    } else if (Object.keys(extra).length) {
+      await setDoc(ref, extra, { merge: true });
+      const merged = { ...snap.data(), ...extra };
+      return merged;
     }
-    
-    return signInWithEmailAndPassword(auth, email, password)
-      .catch((error) => {
-        setAuthError(error.message);
-        throw error;
-      });
-  }
-
-  function googleSignIn() {
-    setAuthError(null);
-    const provider = new GoogleAuthProvider();
-    return signInWithPopup(auth, provider)
-      .then((result) => {
-        return createUserDocument(result.user, {
-          displayName: result.user.displayName,
-          photoURL: result.user.photoURL
-        });
-      })
-      .catch((error) => {
-        setAuthError(error.message);
-        throw error;
-      });
-  }
-
-  function logout() {
-    setAuthError(null);
-    return signOut(auth)
-      .catch((error) => {
-        setAuthError(error.message);
-        throw error;
-      });
-  }
-
-  function updateUserProfile(updates) {
-    return updateProfile(auth.currentUser, updates)
-      .catch((error) => {
-        setAuthError(error.message);
-        throw error;
-      });
-  }
-
-  async function updateUserData(updates) {
-    if (!currentUser) return;
-    
-    try {
-      const userRef = doc(db, 'users', currentUser.uid);
-      await updateDoc(userRef, updates);
-      
-      // Update local user data
-      setUserData(prev => ({ ...prev, ...updates }));
-      return true;
-    } catch (error) {
-      console.error('Error updating user document:', error);
-      setAuthError(error.message);
-      throw error;
-    }
-  }
-
-  async function addPoints(points, reason = "Game reward") {
-    if (!currentUser) return;
-    
-    try {
-      // Update user points
-      const newPoints = (userData?.points || 0) + points;
-      await updateUserData({ points: newPoints });
-      
-      // Create transaction record
-      const transactionsRef = collection(db, 'transactions');
-      await setDoc(doc(transactionsRef), {
-        userId: currentUser.uid,
-        type: 'earn',
-        points: points,
-        balance: newPoints,
-        reason: reason,
-        createdAt: new Date()
-      });
-      
-      return newPoints;
-    } catch (error) {
-      console.error('Error adding points:', error);
-      setAuthError(error.message);
-      throw error;
-    }
-  }
-
-  async function deductPoints(points, reason = "Redemption") {
-    if (!currentUser) return;
-    
-    try {
-      const currentPoints = userData?.points || 0;
-      if (currentPoints < points) {
-        throw new Error("Insufficient points");
-      }
-      
-      const newPoints = currentPoints - points;
-      await updateUserData({ points: newPoints });
-      
-      // Create transaction record
-      const transactionsRef = collection(db, 'transactions');
-      await setDoc(doc(transactionsRef), {
-        userId: currentUser.uid,
-        type: 'spend',
-        points: points,
-        balance: newPoints,
-        reason: reason,
-        createdAt: new Date()
-      });
-      
-      return newPoints;
-    } catch (error) {
-      console.error('Error deducting points:', error);
-      setAuthError(error.message);
-      throw error;
-    }
-  }
-
-  async function createUserDocument(user, additionalData = {}) {
-    if (!user) return;
-    
-    const userRef = doc(db, 'users', user.uid);
-    
-    try {
-      const snapshot = await getDoc(userRef);
-      
-      if (!snapshot.exists()) {
-        const { email } = user;
-        const createdAt = new Date();
-        const isAdmin = email === ADMIN_EMAIL;
-        
-        try {
-          await setDoc(userRef, {
-            email,
-            createdAt,
-            points: 0,
-            isAdmin,
-            displayName: additionalData.displayName || email.split('@')[0],
-            photoURL: additionalData.photoURL || null,
-            status: 'active',
-            ...additionalData
-          });
-        } catch (error) {
-          console.error('Error creating user document:', error);
-          setAuthError(error.message);
-        }
-      }
-      
-      return getUserDocument(user.uid);
-    } catch (error) {
-      console.error('Error accessing user document:', error);
-      setAuthError(error.message);
-      return null;
-    }
-  }
-
-  async function getUserDocument(uid) {
-    if (!uid) return null;
-    
-    try {
-      const userRef = doc(db, 'users', uid);
-      const snapshot = await getDoc(userRef);
-      
-      if (snapshot.exists()) {
-        return { id: snapshot.id, ...snapshot.data() };
-      }
-      return null;
-    } catch (error) {
-      console.error('Error getting user document:', error);
-      setAuthError(error.message);
-      return null;
-    }
-  }
-
-  async function getUserTransactions(limit = 10) {
-    if (!currentUser) return [];
-    
-    try {
-      const transactionsRef = collection(db, 'transactions');
-      const q = query(
-        transactionsRef, 
-        where('userId', '==', currentUser.uid),
-        orderBy('createdAt', 'desc')
-      );
-      
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (error) {
-      console.error('Error getting transactions:', error);
-      setAuthError(error.message);
-      return [];
-    }
-  }
-
-  // Clear error function
-  const clearError = () => {
-    setAuthError(null);
+    return snap.data();
   };
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      
-      if (user) {
-        try {
-          let userDoc = await getUserDocument(user.uid);
-          
-          if (!userDoc) {
-            userDoc = await createUserDocument(user, {
-              displayName: user.displayName,
-              photoURL: user.photoURL
-            });
-          }
-          
-          setUserData(userDoc);
-        } catch (error) {
-          console.error('Error loading user data:', error);
-          setAuthError(error.message);
-        }
-      } else {
-        setUserData(null);
+  const loadUserProfile = async (user) => {
+    if (!user) { setUserData(null); return; }
+    const snap = await getDoc(userRef(user.uid));
+    setUserData(snap.exists() ? snap.data() : null);
+  };
+
+  // ---------- Auth API ----------
+  const signup = async (email, password, { displayName } = {}) => {
+    setAuthError(null);
+    // Never allow public registration with reserved admin email
+    if (email.trim().toLowerCase() === ADMIN_EMAIL) {
+      const err = new Error("This email is reserved for admin and cannot be registered.");
+      setAuthError(err.message);
+      throw err;
+    }
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    if (displayName) await updateProfile(cred.user, { displayName });
+    await createUserDocument(cred.user, { displayName, isAdmin: false });
+    await loadUserProfile(cred.user);
+    return cred.user;
+  };
+
+  const login = async (email, password) => {
+    setAuthError(null);
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    await loadUserProfile(cred.user);
+    return cred.user;
+  };
+
+  // 🔐 Admin fixed-credential login (auto-provision if missing)
+  // inside AuthProvider in src/context/AuthContext.jsx
+const loginAdminOnly = async () => {
+  setAuthError(null);
+  try {
+    // Try to sign in with the fixed creds
+    const cred = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+    await createUserDocument(cred.user, { isAdmin: true, displayName: "Admin" });
+    await loadUserProfile(cred.user);
+    return cred.user;
+  } catch (e) {
+    // Firebase Web SDK v10+ often returns auth/invalid-credential for both
+    // "user-not-found" AND "wrong-password". We handle both safely.
+
+    // 1) Try to CREATE the admin user (bootstrap first login)
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+      await updateProfile(cred.user, { displayName: "Admin" });
+      await createUserDocument(cred.user, { isAdmin: true, displayName: "Admin" });
+      await loadUserProfile(cred.user);
+      return cred.user;
+    } catch (createErr) {
+      // 2) If email already exists -> the password is wrong. We can't change it client-side.
+      if (createErr.code === "auth/email-already-in-use") {
+        const msg =
+          "Admin account exists but the password doesn't match. " +
+          "Open Firebase Console → Authentication → Users and set the admin password to admin@aniket#00, " +
+          "or delete the admin user so it can be auto-created.";
+        setAuthError(msg);
+        throw new Error(msg);
       }
-      
+      // Other creation errors (network, disabled provider, etc.)
+      setAuthError(createErr.message || "Failed to sign in as admin.");
+      throw createErr;
+    }
+  }
+};
+
+
+  const googleSignIn = async () => {
+    setAuthError(null);
+    const provider = new GoogleAuthProvider();
+    const cred = await signInWithPopup(auth, provider);
+    await createUserDocument(cred.user, { displayName: cred.user.displayName || "" });
+    await loadUserProfile(cred.user);
+    return cred.user;
+  };
+
+  const resetPassword = async (email) => {
+    setAuthError(null);
+    return sendPasswordResetEmail(auth, email);
+  };
+
+  const logout = async () => {
+    setAuthError(null);
+    await signOut(auth);
+    setUserData(null);
+  };
+
+  const updateUserProfileSafe = async (partial) => {
+    if (!auth.currentUser) return;
+    await updateProfile(auth.currentUser, partial);
+    await createUserDocument(auth.currentUser, { displayName: auth.currentUser.displayName || "" });
+    await loadUserProfile(auth.currentUser);
+  };
+
+  const updateUserData = async (partial) => {
+    if (!auth.currentUser) return;
+    await setDoc(userRef(auth.currentUser.uid), partial, { merge: true });
+    await loadUserProfile(auth.currentUser);
+  };
+
+  // Points helpers (used by games/redeem)
+  const addPoints = async (amount, reason = "Game reward") => {
+    if (!auth.currentUser) return;
+    const next = Math.max(0, (userData?.points || 0) + amount);
+    await setDoc(userRef(auth.currentUser.uid), { points: next }, { merge: true });
+    setUserData((p) => ({ ...(p || {}), points: next }));
+
+    // (optional) transaction record
+    const txRef = collection(db, "transactions");
+    await setDoc(doc(txRef), {
+      userId: auth.currentUser.uid,
+      type: "earn",
+      points: amount,
+      balance: next,
+      reason,
+      createdAt: serverTimestamp(),
+    });
+    return next;
+  };
+
+  const deductPoints = async (amount, reason = "Redemption") => {
+    if (!auth.currentUser) return;
+    const curr = userData?.points || 0;
+    if (curr < amount) throw new Error("Insufficient points");
+
+    const next = curr - amount;
+    await setDoc(userRef(auth.currentUser.uid), { points: next }, { merge: true });
+    setUserData((p) => ({ ...(p || {}), points: next }));
+
+    // (optional) transaction record
+    const txRef = collection(db, "transactions");
+    await setDoc(doc(txRef), {
+      userId: auth.currentUser.uid,
+      type: "spend",
+      points: amount,
+      balance: next,
+      reason,
+      createdAt: serverTimestamp(),
+    });
+    return next;
+  };
+
+  const getUserDocument = async (uid) => {
+    if (!uid) return null;
+    const snap = await getDoc(userRef(uid));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  };
+
+  const getUserTransactions = async (limitCount = 10) => {
+    if (!auth.currentUser) return [];
+    const txRef = collection(db, "transactions");
+    const q = query(txRef, where("userId", "==", auth.currentUser.uid), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+    return snap.docs.slice(0, limitCount).map((d) => ({ id: d.id, ...d.data() }));
+  };
+
+  const clearError = () => setAuthError(null);
+
+  // ---------- Auth subscription ----------
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      await loadUserProfile(user);
       setLoading(false);
     });
-
-    return unsubscribe;
+    return () => unsub();
   }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     currentUser,
     userData,
+    isAdmin: !!userData?.isAdmin,
     authError,
+    loading,
+
+    // auth
     signup,
     login,
+    loginAdminOnly,
     googleSignIn,
-    logout,
     resetPassword,
-    updateUserProfile,
+    logout,
+
+    // profile
+    updateUserProfile: updateUserProfileSafe,
     updateUserData,
+
+    // points
     addPoints,
     deductPoints,
+
+    // misc
     createUserDocument,
     getUserDocument,
     getUserTransactions,
     clearError,
-    isAdmin: userData?.isAdmin || false
-  };
+  }), [currentUser, userData, authError, loading]);
 
   return (
     <AuthContext.Provider value={value}>
