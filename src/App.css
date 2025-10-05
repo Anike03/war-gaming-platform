@@ -299,8 +299,51 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
   padding: 13px 44px 13px 16px; outline:none;
 }
 .input::placeholder{ color:#8da2b5; }
-.input:focus{ border-color: var(--primary); box-shadow:0 0 0 3px rgba(21,98,214,.25); }
-.field .icon{ position:absolute; right:12px; top:50%; transform:translateY(-50%); color:#8aa4bb; }
+.input:focus{
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(21,98,214,.25);
+}
+/* Right-side icons baseline + centering */
+.field .icon,
+.field .icon-right{
+  position: absolute;
+  right: 20px;
+  top: 65%;
+  transform: translateY(-50%);
+  color: #8aa4bb;
+  width: 18px;
+  height: 18px;
+  pointer-events: none; /* decorative only */
+}
+
+/* Clickable eye toggle for password fields */
+.icon-btn{
+  position: absolute;
+  right: 12px;
+  top: 65%;
+  transform: translateY(-50%);
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: transparent;
+  border: 0;
+  color: #8aa4bb;
+  cursor: pointer;
+  padding: 0;
+}
+.icon-btn:hover{ color: #cfe2ff; }
+.icon-btn:focus{
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Ensure inputs have space for the icon/eye button on the right */
+.input{
+  padding-right: 48px;  /* was 44px – gives breathing room for the icon-btn */
+}
+
 
 .row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:6px; }
 .check{ display:flex; align-items:center; gap:8px; color:#b7c5d6; font-size:.92rem; }
@@ -614,30 +657,6 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* ==========================================================================
    Enhanced Logo Styles - Dramatic Hover Effect
    ========================================================================== */
@@ -648,7 +667,7 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
   display: grid;
   place-items: center;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--primary), var(--success));
+  /* background: linear-gradient(135deg, var(--primary), var(--success)); */
   padding: 0;
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
@@ -709,3 +728,513 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
 .brand:hover .brand-logo.image-failed span {
   transform: scale(1.3);
 }
+
+/* ==========================================================================
+   Enhanced Gamer Footer Styles
+   ========================================================================== */
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  background: linear-gradient(180deg, #0a0f14 0%, #0e141c 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.site-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px 20px;
+}
+
+.footer-sections {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 30px;
+}
+
+@media (max-width: 968px) {
+  .footer-sections {
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+  }
+}
+
+@media (max-width: 640px) {
+  .footer-sections {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+}
+
+/* Footer Section Styling */
+.footer-section h4 {
+  color: var(--text);
+  font-weight: 800;
+  font-size: 16px;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+}
+
+.footer-section h4::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 30px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), transparent);
+  border-radius: 2px;
+}
+
+/* Brand Section */
+.footer-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.footer-logo {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  /* background: linear-gradient(135deg, var(--primary), var(--success)); */
+  padding: 4px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.footer-logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  background: aquamarine;
+}
+
+.footer-brand-text h3 {
+  color: var(--text);
+  font-weight: 800;
+  font-size: 18px;
+  margin: 0 0 6px 0;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.footer-brand-text p {
+  color: var(--text-mute);
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Social Links */
+.social-links {
+  display: flex;
+  gap: 12px;
+}
+
+.social-link {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.social-link:hover {
+  background: var(--primary);
+  color: white;
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(21, 98, 214, 0.3);
+}
+
+/* Footer Links */
+.footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footer-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  padding: 6px 0;
+}
+
+.footer-link:hover {
+  color: var(--primary);
+  transform: translateX(5px);
+}
+
+.footer-link svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.footer-link:hover svg {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Footer Bottom - Centered */
+.footer-bottom {
+  display: flex;
+  justify-content: center; /* Center horizontally */
+  align-items: center;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.footer-copyright {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-mute);
+  font-size: 14px;
+  justify-content: center; /* Center the content */
+  flex-wrap: wrap;
+}
+
+.heart-icon {
+  color: #ef4444;
+  animation: heartbeat 2s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Responsive Design for centered footer */
+@media (max-width: 768px) {
+  .footer-bottom {
+    padding-top: 15px;
+  }
+  
+  .footer-copyright {
+    font-size: 13px;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-copyright {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .footer-copyright span {
+    display: block;
+    text-align: center;
+  }
+}
+
+/* Footer Legal Links */
+.footer-legal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-mute);
+  font-size: 14px;
+}
+
+.legal-link {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.3s ease;
+  font-size: 13px;
+}
+
+.legal-link:hover {
+  color: var(--primary);
+}
+
+.divider {
+  color: var(--text-mute);
+  opacity: 0.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+  }
+  
+  .footer-legal {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .footer-brand {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+  }
+  
+  .social-links {
+    justify-content: center;
+  }
+}
+
+/* Gaming-themed enhancements */
+.footer-section {
+  position: relative;
+}
+
+.footer-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -10px;
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(180deg, transparent, var(--primary), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.footer-section:hover::before {
+  opacity: 0.3;
+}
+
+/* Logo hover effect */
+.footer-logo {
+  transition: all 0.3s ease;
+}
+
+.footer-brand:hover .footer-logo {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* OAuth divider */
+.oauth-divider{
+  display:flex; align-items:center; gap:10px;
+  margin: 12px 0;
+  color: var(--text-mute);
+  font-weight: 700;
+}
+.oauth-divider::before,
+.oauth-divider::after{
+  content:"";
+  height:1px; flex:1;
+  background: var(--line);
+}
+.oauth-divider span{ opacity:.9; }
+
+/* Google button (fits your dark theme) */
+.oauth-btn{
+  width:100%;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  border-radius: 999px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  background: #0b1320;
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+.oauth-btn:hover{ background:#111c2a; }
+.oauth-btn:disabled{ opacity:.7; cursor:not-allowed; }
+
+.oauth-google .oauth-icon{
+  width: 18px; height: 18px;
+  background: #fff;           
+  border-radius: 2px;
+  padding: 1px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Make inline links in forms obvious & clickable */
+.link-inline{
+  color: var(--text-dim);
+  text-decoration: none;
+  font-weight: 800;
+  padding-bottom: 10px;
+}
+.link-inline:hover{ color:#fff; }
+
+/* Divider between email login and OAuth */
+.oauth-divider{
+  display:flex; align-items:center; gap:10px;
+  margin: 12px 0;
+  color: var(--text-mute);
+  font-weight: 700;
+}
+.oauth-divider::before,
+.oauth-divider::after{
+  content:"";
+  height:1px; flex:1;
+  background: var(--line);
+}
+.oauth-divider span{ opacity:.9; }
+
+/* Google button */
+.oauth-btn{
+  width:100%;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  border-radius: 999px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  background: #0b1320;
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+.oauth-btn:hover{ background:#111c2a; }
+.oauth-btn:disabled{ opacity:.7; cursor:not-allowed; }
+.oauth-google .oauth-icon{
+  width: 18px; height: 18px;
+  background: #fff;
+  border-radius: 2px;
+  padding: 1px;
+}
+
+/* Subheader + back link */
+.auth-subtitle{
+  color: var(--text-dim);
+  text-align: center;
+  margin: -4px 0 14px;
+}
+.backlink{
+  display:inline-flex; align-items:center; gap:8px;
+  color: var(--text-dim); text-decoration:none; font-weight:700;
+  margin-bottom: 6px;
+}
+.backlink:hover{ color:#fff; }
+
+/* Banners for success/error */
+.banner{
+  display:flex; align-items:center; gap:8px;
+  padding:.6rem .75rem;
+  border-radius:12px;
+  border:1px solid transparent;
+  font-weight:700;
+  margin: 8px 0 12px;
+}
+.banner-success{
+  background: rgba(22,163,74,.14);
+  color:#b7f4c9;
+  border-color:#1a7d43;
+}
+.banner-error{
+  background: rgba(239,68,68,.14);
+  color:#ffc2c2;
+  border-color:#8e2a2a;
+}
+
+/* Optional: lighter helper text style */
+.muted{ color: var(--text-mute); }
+
+
+/* Lay out the help row so items never overlap */
+.help-inline{
+  display: flex;
+  justify-content: center;   /* ⟵ centers horizontally */
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;               /* make the row span the card width */
+  text-align: center;        /* keeps text centered if it wraps */
+  margin-top: 12px;
+}
+
+
+/* Softer, smaller zoom and white text */
+@keyframes zoomPulseSoft {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.035); }  /* was 1.08 — now subtle */
+  100% { transform: scale(1); }
+}
+
+.contact-pulse{
+  display: inline-block;
+  font-weight: 900;
+  color: #fff;             /* white */
+  text-decoration: none;
+  transform-origin: center;
+  will-change: transform;
+  animation: zoomPulseSoft 2s ease-in-out infinite;  /* slower + softer */
+  margin-left: 2px;        /* tiny nudge away from "Need help?" */
+  line-height: 1.2;        /* helps avoid visual overlap on tight lines */
+}
+
+.contact-pulse:hover{ opacity: .9; }
+.contact-pulse:focus{
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .contact-pulse{ animation: none; }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

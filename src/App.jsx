@@ -1,18 +1,25 @@
+// src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AllProviders } from './context';
+
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
+
 import Home from './pages/Home';
 import Games from './pages/Games';
 import Leaderboard from './pages/Leaderboard';
 import Redeem from './pages/Redeem';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import ForgotPassword from './components/auth/ForgotPassword';
+
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminProtectedRoute from './components/auth/AdminProtectedRoute';
+
 import './App.css';
 import './styles/animations.css';
 import './styles/threejs.css';
@@ -26,30 +33,71 @@ function App() {
           <Header />
           <main>
             <Routes>
+              {/* Public */}
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/games" element={
-                <ProtectedRoute>
-                  <Games />
-                </ProtectedRoute>
-              } />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/redeem" element={
-                <ProtectedRoute>
-                  <Redeem />
-                </ProtectedRoute>
-              } />
-              <Route path="/profile" element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin" element={
-                <AdminProtectedRoute>
-                  <Admin />
-                </AdminProtectedRoute>
-              } />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+
+              {/* Protected */}
+              <Route
+                path="/leaderboard"
+                element={
+                  <ProtectedRoute>
+                    <Leaderboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/games"
+                element={
+                  <ProtectedRoute>
+                    <Games />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/redeem"
+                element={
+                  <ProtectedRoute>
+                    <Redeem />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Admin only */}
+              <Route
+                path="/admin"
+                element={
+                  <AdminProtectedRoute>
+                    <Admin />
+                  </AdminProtectedRoute>
+                }
+              />
+
+              {/* 404 */}
+              <Route
+                path="*"
+                element={
+                  <div className="container" style={{ padding: "32px 16px" }}>
+                    <div className="card">
+                      <h2 className="mb-3">Page not found</h2>
+                      <p className="text-muted mb-4">
+                        The page you’re looking for doesn’t exist.
+                      </p>
+                      <a className="btn btn-primary" href="/">Go home</a>
+                    </div>
+                  </div>
+                }
+              />
             </Routes>
           </main>
           <Footer />
