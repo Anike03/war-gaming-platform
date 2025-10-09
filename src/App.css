@@ -1078,26 +1078,6 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
   padding: 1px;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* Make inline links in forms obvious & clickable */
 .link-inline{
   color: var(--text-dim);
@@ -1234,7 +1214,308 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
 
 
 
+/*css for games */
+/* ===================== Number Grid ===================== */
+.ng-shell{
+  display: grid;
+  gap: 14px;
+}
 
+/* top status pills */
+.ng-top{
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+}
+.ng-pill{
+  display:inline-flex; align-items:center; gap:8px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--line);
+  padding: .45rem .7rem;
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-weight: 800;
+}
+.ng-dot{
+  width:8px; height:8px; border-radius:999px; background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+}
 
+/* reveal card */
+.ng-reveal-header{
+  display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:10px;
+}
+.ng-reveal-hint{
+  font-weight:800; letter-spacing:.3px; color:#cde3ff;
+}
+.ng-progress{
+  position:relative; height:10px; width:160px; border:1px solid var(--line);
+  border-radius:999px; background: rgba(255,255,255,.04); overflow:hidden;
+}
+.ng-progress-fill{
+  height:100%; width:0%;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+  border-radius:999px;
+}
+@keyframes ngProgress { from{ width:0% } to{ width:100% } }
 
+.ng-seq{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  gap:10px;
+}
+.ng-seq-cell{
+  position:relative; display:grid; place-items:center;
+  border:1px solid var(--line);
+  border-radius:12px; padding:16px; 
+  background: linear-gradient(180deg, #0b1320, #0d1726);
+  box-shadow: inset 0 0 20px rgba(255,255,255,.03);
+}
+.ng-seq-number{
+  font-size: 24px; font-weight: 900; color:#f2f7ff;
+  text-shadow: 0 2px 20px rgba(21,98,214,.25);
+}
+.ng-flash{
+  position:absolute; top:6px; right:8px;
+  font-size: 14px; color: #ffd27f; opacity:.9;
+}
 
+.ng-reveal-footer{ margin-top:8px; }
+
+/* input phase */
+.ng-input-header{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;
+}
+.ng-lights{ display:flex; gap:6px; }
+.ng-light{
+  width:8px; height:8px; border-radius:999px; background:#243244; border:1px solid #2a3a52;
+  transition: all 0.2s ease;
+}
+.ng-light.on{
+  background:#9ed1ff; box-shadow: 0 0 12px rgba(158,209,255,.7);
+}
+
+.ng-input-area{
+  position:relative;
+  display:grid; gap:6px;
+}
+.ng-input-field{
+  text-align:center; letter-spacing: 2px; font-weight:900;
+  background: #0a1320;
+  border: 1px solid var(--line);
+  padding: 12px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 18px;
+}
+.ng-input-field:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb, 21, 98, 214), 0.2);
+}
+.ng-ghost{
+  text-align:center; color: var(--text-mute); font-size:.9rem;
+}
+
+/* keypad */
+.ng-keypad{
+  display:grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px; margin-top: 12px;
+}
+.ng-key{
+  background: #0c1726; border-color: #223244;
+  font-weight:900;
+  padding: 12px 8px;
+  transition: all 0.15s ease;
+  border: 1px solid #223244;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+}
+.ng-key:hover{ 
+  background:#122031; 
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+.ng-key:active {
+  transform: translateY(0px);
+  background: #0a1320;
+}
+.ng-back{ grid-column: span 2; }
+.ng-submit{ grid-column: span 3; }
+
+/* stats section */
+.ng-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,.02);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+/* tiny shake feedback on mistake retry */
+@keyframes ngShake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+.ng-input-area.shake { animation: ngShake .35s both; }
+
+/* bottom bar */
+.ng-bottom{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin-top: 10px;
+}
+
+/* ===== Number Grid — Game Over UI ===== */
+.ng-over { 
+  text-align:center; 
+  padding: 28px;
+  animation: ngFadeIn 0.5s ease-out;
+}
+
+@keyframes ngFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ng-over-title{
+  font-size: 28px;
+  font-weight: 900; 
+  margin-bottom: 16px;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+  -webkit-background-clip: text; 
+  background-clip: text; 
+  color: transparent;
+}
+.ng-over-title.lose{
+  background: linear-gradient(90deg, var(--warning), #ff9f7a);
+  -webkit-background-clip: text; 
+  background-clip:text; 
+  color:transparent;
+}
+.ng-over-body{ 
+  display:grid; 
+  gap:12px;
+  justify-items:center; 
+  margin: 20px 0;
+}
+.ng-over-stat{
+  display:flex; 
+  gap:12px; 
+  align-items:center; 
+  font-weight:800;
+  background: rgba(255,255,255,.04); 
+  border:1px solid var(--line);
+  padding:.6rem 1rem;
+  border-radius: 999px;
+  min-width: 200px;
+  justify-content: space-between;
+}
+.ng-over-stat .label{ 
+  color: var(--text-dim); 
+  font-size: 0.9rem;
+}
+.ng-over-stat .value{ 
+  color: #fff; 
+  font-size: 1.1rem;
+}
+.ng-over-note {
+  margin: 8px 0;
+  font-style: italic;
+}
+.ng-over-points{
+  display:flex; 
+  align-items:center; 
+  gap:10px; 
+  margin-top: 8px;
+  padding: 10px 20px;
+  background: rgba(var(--success-rgb, 46, 125, 50), 0.1);
+  border-radius: 999px;
+  border: 1px solid rgba(var(--success-rgb, 46, 125, 50), 0.3);
+}
+.ng-over-count {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,.05);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+.ng-over-actions{ 
+  display:flex; 
+  gap: 12px;
+  justify-content:center; 
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+/* Enhanced button styles */
+.btn-success {
+  background: linear-gradient(135deg, var(--success), #2ecc71);
+  border: none;
+  color: white;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(46, 204, 113, 0.3);
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .ng-seq {
+    grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+    gap: 8px;
+  }
+  
+  .ng-seq-cell {
+    padding: 12px;
+  }
+  
+  .ng-keypad {
+    gap: 8px;
+  }
+  
+  .ng-key {
+    padding: 10px 6px;
+    font-size: 0.9rem;
+  }
+  
+  .ng-over-stat {
+    min-width: 180px;
+    padding: 0.5rem 0.8rem;
+  }
+  
+  .ng-over-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .ng-over-actions .btn {
+    width: 100%;
+    max-width: 250px;
+  }
+}
+
+/* Focus styles for accessibility */
+.ng-key:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.ng-submit:focus-visible {
+  outline: 2px solid var(--success);
+  outline-offset: 2px;
+}
+
+.btn-success:focus-visible {
+  outline: 2px solid var(--success);
+  outline-offset: 2px;
+}

@@ -1,15 +1,24 @@
-import React, { useState } from 'react';
+// src/pages/Games.jsx
+import React, { useEffect, useMemo, useState } from 'react';
 import { useGame, useAuth } from '../hooks';
-import { Play, Clock, Star, TrendingUp, Award } from 'lucide-react';
+import { Play, Star } from 'lucide-react';
 import GameModal from '../components/games/GameModal';
 
 const Games = () => {
-  const { userData } = useAuth();
+  const { userData, addPoints } = useAuth();
   const { gameHistory } = useGame();
+
   const [selectedGame, setSelectedGame] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [pointsShown, setPointsShown] = useState(userData?.points ?? 0);
 
-  const games = [
+  useEffect(() => {
+    // keep in sync if context changes (e.g., after refresh or elsewhere)
+    setPointsShown(userData?.points ?? 0);
+  }, [userData?.points]);
+
+  // Catalog of games shown as cards
+  const games = useMemo(() => ([
     {
       id: 'number-grid',
       name: 'Number Grid',
@@ -66,17 +75,18 @@ const Games = () => {
       difficulties: ['easy', 'medium', 'hard', 'extreme'],
       color: 'linear-gradient(135deg, #f46b45 0%, #eea849 100%)'
     }
-  ];
+  ]), []);
 
+  // Use gameId (not name) to compute simple stats from history
   const getGameStats = (gameId) => {
-    const gameGames = gameHistory.filter(game => game.name === gameId);
-    if (gameGames.length === 0) return null;
+    const played = gameHistory?.filter(g => g.gameId === gameId) || [];
+    if (played.length === 0) return null;
 
-    const wins = gameGames.filter(game => game.completed).length;
-    const totalPoints = gameGames.reduce((sum, game) => sum + (game.pointsEarned || 0), 0);
-    const bestScore = Math.max(...gameGames.map(game => game.score || 0));
+    const wins = played.filter(g => g.completed).length;
+    const totalPoints = played.reduce((sum, g) => sum + (g.pointsEarned || 0), 0);
+    const bestScore = Math.max(...played.map(g => g.score || 0));
 
-    return { plays: gameGames.length, wins, totalPoints, bestScore };
+    return { plays: played.length, wins, totalPoints, bestScore };
   };
 
   const handleGameSelect = (game) => {
@@ -84,63 +94,90 @@ const Games = () => {
     setShowModal(true);
   };
 
+  // 🔑 When a game finishes, save points and update the UI
+  const handleGameEnd = async (payload) => {
+    // payload { completed, won, score, pointsEarned, meta }
+    try {
+      const pts = Number(payload?.pointsEarned || 0);
+      if (pts > 0) {
+        // addPoints returns the new total (per your AuthContext)
+        const newTotal = await addPoints(pts, `Game: ${selectedGame?.name}${payload?.won ? ' (win)' : ''}`);
+        // Update the badge immediately
+        setPointsShown(newTotal ?? (pointsShown + pts));
+      }
+    } catch (e) {
+      // Silently ignore for UI, or you could show a toast here
+      console.error('Failed to add points:', e);
+    } finally {
+      setShowModal(false);
+      setSelectedGame(null);
+    }
+  };
+
   return (
     <div className="container">
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1>Games Arena</h1>
-        <div className="wallet-badge">
+        <div className="wallet-badge" title="Your total points">
           <Star size={20} />
-          <span>{userData?.points || 0} Points</span>
+          <span>{pointsShown} Points</span>
         </div>
       </div>
 
+      {/* Games grid */}
       <div className="grid grid-3">
         {games.map((game) => {
           const stats = getGameStats(game.id);
-          
+
           return (
             <div key={game.id} className="card hover-lift">
-              <div 
+              {/* Card header with gradient */}
+              <div
                 className="game-card-header p-4 rounded-t-lg text-white text-center"
                 style={{ background: game.color }}
               >
-                <div className="text-4xl mb-2">{game.icon}</div>
+                <div className="text-4xl mb-2" aria-hidden>{game.icon}</div>
                 <h3>{game.name}</h3>
               </div>
-              
+
+              {/* Body */}
               <div className="p-4">
                 <p className="text-muted mb-4">{game.description}</p>
-                
+
+                {/* Difficulties shown as small badges */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {game.difficulties.map(diff => (
-                    <span key={diff} className="badge badge-secondary text-sm">
-                      {diff.charAt(0).toUpperCase() + diff.slice(1)}
+                  {game.difficulties.map(level => (
+                    <span key={level} className="badge badge-secondary text-sm">
+                      {level.charAt(0).toUpperCase() + level.slice(1)}
                     </span>
                   ))}
                 </div>
 
+                {/* Stats (if any) */}
                 {stats && (
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm">
-                      <span>Plays:</span>
+                      <span>Plays</span>
                       <span className="font-semibold">{stats.plays}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Wins:</span>
+                      <span>Wins</span>
                       <span className="font-semibold text-success">{stats.wins}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Best Score:</span>
+                      <span>Best Score</span>
                       <span className="font-semibold text-warning">{stats.bestScore}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Total Points:</span>
+                      <span>Total Points</span>
                       <span className="font-semibold text-primary">{stats.totalPoints}</span>
                     </div>
                   </div>
                 )}
 
-                <button 
+                {/* Play */}
+                <button
                   onClick={() => handleGameSelect(game)}
                   className="btn btn-primary btn-full"
                 >
@@ -153,10 +190,15 @@ const Games = () => {
         })}
       </div>
 
+      {/* Modal mounts the actual game with difficulty selection */}
       {showModal && selectedGame && (
-        <GameModal 
-          game={selectedGame} 
-          onClose={() => setShowModal(false)} 
+        <GameModal
+          game={selectedGame}
+          onClose={() => {
+            setShowModal(false);
+            setSelectedGame(null);
+          }}
+          onGameEnd={handleGameEnd}   // ⟵ Bubble up points & close
         />
       )}
     </div>

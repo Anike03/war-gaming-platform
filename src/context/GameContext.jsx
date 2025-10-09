@@ -1,193 +1,113 @@
-// GameContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-import { db } from '../utils/firebase';
-import { collection, addDoc, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
+// src/context/GameContext.jsx
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { db } from "../utils/firebase";
+import { useAuth } from "./AuthContext";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  where,
+} from "firebase/firestore";
 
-export const GameContext = createContext(); // Added export
+export const GameContext = createContext(null);
+export const useGame = () => useContext(GameContext);
 
-export function useGame() {
-  return useContext(GameContext);
-}
+// Base points per difficulty (used everywhere)
+export const POINTS_SYSTEM = {
+  easy: 25,
+  medium: 50,
+  hard: 75,
+  extreme: 100,
+};
 
 export function GameProvider({ children }) {
-  const [currentGame, setCurrentGame] = useState(null);
-  const [gameScore, setGameScore] = useState(0);
-  const [gameHistory, setGameHistory] = useState([]);
-  const [leaderboard, setLeaderboard] = useState([]);
   const { currentUser, addPoints } = useAuth();
+  const [gameHistory, setGameHistory] = useState([]);     // this feeds Profile
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [leaderboard, setLeaderboard] = useState([]);
 
-  // Points system based on difficulty
-  const POINTS_SYSTEM = {
-    easy: 25,
-    medium: 50,
-    hard: 75,
-    extreme: 100
-  };
+  // ---- SAVE RESULT (single, canonical path) ------------------------------
+  // payload: { gameId, gameName, difficulty, score, completed, pointsEarned, duration? }
+  const saveGameResult = async (payload) => {
+    if (!currentUser) throw new Error("You must be logged in to save the game.");
 
-  const startGame = (gameName, difficulty) => {
-    setCurrentGame({
-      name: gameName,
-      difficulty,
-      startTime: new Date()
-    });
-    setGameScore(0);
-  };
-
-  const endGame = async (score, completed = true) => {
-    if (!currentGame || !currentUser) return null;
-    
-    const endTime = new Date();
-    const duration = Math.round((endTime - currentGame.startTime) / 1000); // in seconds
-    
-    const gameResult = {
-      ...currentGame,
-      score,
-      completed,
-      endTime,
-      duration,
-      userId: currentUser.uid
+    const result = {
+      userId: currentUser.uid,
+      name: payload.gameName || payload.gameId,
+      gameId: payload.gameId,
+      difficulty: payload.difficulty,
+      score: Math.max(0, Math.floor(payload.score || 0)),
+      completed: !!payload.completed,
+      duration: typeof payload.duration === "number" ? Math.max(0, Math.floor(payload.duration)) : 0,
+      pointsEarned: Math.max(0, Math.floor(payload.pointsEarned || 0)),
+      createdAt: serverTimestamp(),
     };
-    
-    // Calculate points earned
-    let pointsEarned = 0;
-    if (completed && score > 0) {
-      pointsEarned = POINTS_SYSTEM[currentGame.difficulty] || 0;
-      
-      // Add bonus for high scores or fast completion
-      if (score > 1000) pointsEarned += Math.floor(score / 100);
-      if (duration < 60) pointsEarned += Math.floor((60 - duration) / 10) * 5;
+
+    // 1) write the game result
+    const gamesRef = collection(db, "games");
+    await addDoc(gamesRef, result);
+
+    // 2) award points (if any)
+    if (result.pointsEarned > 0) {
+      await addPoints(result.pointsEarned, `Completed ${result.name} (${result.difficulty})`);
     }
-    
-    gameResult.pointsEarned = pointsEarned;
-    
-    try {
-      // Save game result to database
-      const gamesRef = collection(db, 'games');
-      const docRef = await addDoc(gamesRef, {
-        ...gameResult,
-        createdAt: new Date()
-      });
-      
-      gameResult.id = docRef.id;
-      
-      // Add points to user account
-      if (pointsEarned > 0) {
-        await addPoints(pointsEarned, `Completed ${currentGame.name} on ${currentGame.difficulty} difficulty`);
-      }
-      
-      // Update local state
-      setGameHistory(prev => [...prev, gameResult]);
-      setCurrentGame(null);
-      
-      return gameResult;
-    } catch (error) {
-      console.error('Error saving game result:', error);
-      return null;
-    }
+
+    // local state will update via the onSnapshot listener below
+    return result;
   };
 
-  const updateScore = (points) => {
-    setGameScore(prev => prev + points);
-  };
-
-  const getLeaderboard = async (gameName = null, difficulty = null, limit = 10) => {
-    try {
-      let q = query(
-        collection(db, 'games'),
-        orderBy('score', 'desc'),
-        orderBy('duration', 'asc')
-      );
-      
-      if (gameName) {
-        q = query(q, where('name', '==', gameName));
-      }
-      
-      if (difficulty) {
-        q = query(q, where('difficulty', '==', difficulty));
-      }
-      
-      const querySnapshot = await getDocs(q);
-      const results = [];
-      
-      querySnapshot.forEach((doc) => {
-        results.push({ id: doc.id, ...doc.data() });
-      });
-      
-      // Get user data for each game result
-      const leaderboardWithUsers = await Promise.all(
-        results.slice(0, limit).map(async (result) => {
-          const userRef = doc(db, 'users', result.userId);
-          const userSnap = await getDoc(userRef);
-          
-          return {
-            ...result,
-            user: userSnap.exists() ? userSnap.data() : { displayName: 'Unknown Player' }
-          };
-        })
-      );
-      
-      setLeaderboard(leaderboardWithUsers);
-      return leaderboardWithUsers;
-    } catch (error) {
-      console.error('Error getting leaderboard:', error);
-      return [];
-    }
-  };
-
-  const getUserGameHistory = async (userId = null, limit = 20) => {
-    const targetUserId = userId || (currentUser ? currentUser.uid : null);
-    if (!targetUserId) return [];
-    
-    try {
-      const q = query(
-        collection(db, 'games'),
-        where('userId', '==', targetUserId),
-        orderBy('createdAt', 'desc')
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const history = [];
-      
-      querySnapshot.forEach((doc) => {
-        history.push({ id: doc.id, ...doc.data() });
-      });
-      
-      return history.slice(0, limit);
-    } catch (error) {
-      console.error('Error getting user game history:', error);
-      return [];
-    }
-  };
-
+  // ---- Realtime history for current user --------------------------------
   useEffect(() => {
-    if (currentUser) {
-      // Load user's game history
-      getUserGameHistory().then(history => {
-        setGameHistory(history);
-      });
-      
-      // Load global leaderboard
-      getLeaderboard();
+    if (!currentUser) {
+      setGameHistory([]);
+      setLoadingHistory(false);
+      return;
     }
+
+    const q = query(
+      collection(db, "games"),
+      where("userId", "==", currentUser.uid),
+      orderBy("createdAt", "desc")
+    );
+
+    setLoadingHistory(true);
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list = [];
+        snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+        setGameHistory(list);
+        setLoadingHistory(false);
+      },
+      () => setLoadingHistory(false)
+    );
+
+    return () => unsub();
   }, [currentUser]);
 
-  const value = {
-    currentGame,
-    gameScore,
-    gameHistory,
-    leaderboard,
-    startGame,
-    endGame,
-    updateScore,
-    getLeaderboard,
-    getUserGameHistory,
-    POINTS_SYSTEM
+  // ---- (Optional) simple global leaderboard (top 10) ---------------------
+  const refreshLeaderboard = async () => {
+    // lightweight: client-side pull by your own queries if needed later
+    // Kept here for API compatibility with your earlier code.
+    return leaderboard;
   };
 
-  return (
-    <GameContext.Provider value={value}>
-      {children}
-    </GameContext.Provider>
+  const value = useMemo(
+    () => ({
+      POINTS_SYSTEM,
+      gameHistory,
+      loadingHistory,
+      leaderboard,
+      refreshLeaderboard,
+      saveGameResult,
+    }),
+    [gameHistory, loadingHistory, leaderboard]
   );
+
+  return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }

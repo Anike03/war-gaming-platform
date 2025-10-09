@@ -19,6 +19,7 @@ import ForgotPassword from './components/auth/ForgotPassword';
 
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminProtectedRoute from './components/auth/AdminProtectedRoute';
+import GameLoader from './components/games/GameLoader';
 
 import './App.css';
 import './styles/animations.css';
@@ -98,6 +99,14 @@ function App() {
                   </div>
                 }
               />
+              <Route
+  path="/play/:gameId"
+  element={
+    <ProtectedRoute>
+      <GameLoader />
+    </ProtectedRoute>
+  }
+/>
             </Routes>
           </main>
           <Footer />

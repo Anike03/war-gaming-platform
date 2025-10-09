@@ -1,150 +1,239 @@
-import React, { useState } from 'react';
-import { useGame } from '../../hooks';
-import { X, Play, Star, Clock, Award, Info } from 'lucide-react';
-import NumberGrid from './NumberGrid';
-import ColorGrid from './ColorGrid';
-import TicTacToe from './TicTacToe';
-import QuizQuest from './QuizQuest';
-import Chess from './Chess';
-import Sudoku from './Sudoku';
-import Crossword from './Crossword';
+// src/components/games/GameModal.jsx
+import React, { useState, useCallback, useEffect } from "react";
+import { X, PlayCircle, CheckCircle2 } from "lucide-react";
 
-const GameModal = ({ game, onClose }) => {
-  const [selectedDifficulty, setSelectedDifficulty] = useState('medium');
-  const [gameStarted, setGameStarted] = useState(false);
-  const { startGame } = useGame();
+// Game components
+import NumberGrid from "./NumberGrid";
+import ColorGrid from "./ColorGrid";
+import TicTacToe from "./TicTacToe";
+import QuizQuest from "./QuizQuest";
+import Chess from "./Chess";
+import Sudoku from "./Sudoku";
+import Crossword from "./Crossword";
 
-  const difficulties = [
-    { id: 'easy', name: 'Easy', points: 25, description: 'Great for beginners' },
-    { id: 'medium', name: 'Medium', points: 50, description: 'Balanced challenge' },
-    { id: 'hard', name: 'Hard', points: 75, description: 'For experienced players' },
-    { id: 'extreme', name: 'Extreme', points: 100, description: 'Ultimate challenge' }
-  ];
+import { useGame } from "../../context/GameContext";
 
-  const handleStartGame = () => {
-    startGame(game.id, selectedDifficulty);
-    setGameStarted(true);
+const DIFF_LABEL = { easy: "Easy", medium: "Medium", hard: "Hard", extreme: "Extreme" };
+
+const GameModal = ({ game, onClose, onGameEnd }) => {
+  const { saveGameResult, POINTS_SYSTEM } = useGame();
+
+  const [difficulty, setDifficulty] = useState("easy");
+  const [launched, setLaunched] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(null);
+  const [error, setError] = useState("");
+  const [gameCompleted, setGameCompleted] = useState(false);
+
+  const start = () => { 
+    setError(""); 
+    setLaunched(true); 
+    setGameCompleted(false);
+    setSaved(null);
   };
 
-  const handleGameEnd = () => {
-    setGameStarted(false);
-    onClose();
+  const handleChildEnd = useCallback(
+    async (payload) => {
+      // Only process if we haven't already completed a game
+      if (gameCompleted) return;
+      
+      // expected from child: { score, completed, pointsEarned?, duration? }
+      const safe = {
+        score: Math.max(0, Math.floor(payload?.score || 0)),
+        completed: !!payload?.completed,
+        duration: typeof payload?.duration === 'number' ? Math.max(0, Math.floor(payload.duration)) : 0,
+      };
+
+      let pts = typeof payload?.pointsEarned === 'number' ? payload.pointsEarned : 0;
+      if (pts <= 0 && safe.completed && safe.score > 0) {
+        pts = POINTS_SYSTEM[difficulty] || 0;
+      }
+      safe.pointsEarned = Math.max(0, Math.floor(pts));
+
+      try {
+        setSaving(true);
+        setError("");
+        setGameCompleted(true);
+
+        if (typeof onGameEnd === "function") {
+          await onGameEnd({
+            ...safe,
+            gameId: game.id,
+            gameName: game.name,
+            difficulty,
+            endedAt: new Date().toISOString(),
+          });
+        } else {
+          await saveGameResult({
+            gameId: game.id,
+            gameName: game.name,
+            difficulty,
+            score: safe.score,
+            completed: safe.completed,
+            pointsEarned: safe.pointsEarned,
+            duration: safe.duration,
+          });
+        }
+
+        // Store the saved result to show later
+        setSaved(safe);
+        
+      } catch (e) {
+        setError(e?.message || "Could not save your result. Please try again.");
+        setGameCompleted(false); // Reset if save failed
+      } finally {
+        setSaving(false);
+      }
+    },
+    [POINTS_SYSTEM, difficulty, game?.id, game?.name, onGameEnd, saveGameResult, gameCompleted]
+  );
+
+  // This function handles when the game wants to exit (after countdown)
+  const handleGameExit = useCallback(() => {
+    // If we have saved results, show them instead of closing
+    if (saved) {
+      // We're already showing the results via the saved state
+      console.log("Game exit called with saved results");
+    } else {
+      // No results yet, just close
+      onClose();
+    }
+  }, [saved, onClose]);
+
+  const commonProps = { 
+    difficulty, 
+    onGameEnd: handleChildEnd, 
+    onExit: handleGameExit
   };
 
-  const renderGameComponent = () => {
-    const props = {
-      difficulty: selectedDifficulty,
-      onGameEnd: handleGameEnd
-    };
-
+  const renderGame = () => {
     switch (game.id) {
-      case 'number-grid':
-        return <NumberGrid {...props} />;
-      case 'color-grid':
-        return <ColorGrid {...props} />;
-      case 'tic-tac-toe':
-        return <TicTacToe {...props} />;
-      case 'quizquest':
-        return <QuizQuest {...props} />;
-      case 'chess':
-        return <Chess {...props} />;
-      case 'sudoku':
-        return <Sudoku {...props} />;
-      case 'crossword':
-        return <Crossword {...props} />;
-      default:
-        return <div>Game not found</div>;
+      case "number-grid": return <NumberGrid {...commonProps} />;
+      case "color-grid":  return <ColorGrid {...commonProps} />;
+      case "tic-tac-toe": return <TicTacToe {...commonProps} />;
+      case "quizquest":   return <QuizQuest {...commonProps} />;
+      case "chess":       return <Chess {...commonProps} />;
+      case "sudoku":      return <Sudoku {...commonProps} />;
+      case "crossword":   return <Crossword {...commonProps} />;
+      default:            return <div className="p-4">Coming soon…</div>;
     }
   };
 
-  if (gameStarted) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
-        <div className="bg-card rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-          <div className="p-4 border-b border-border-color flex justify-between items-center">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              {game.icon} {game.name} - {selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)}
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-1 hover:bg-primary/10 rounded-full transition-colors"
-            >
-              <X size={24} />
-            </button>
-          </div>
-          <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
-            {renderGameComponent()}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handlePlayAgain = () => {
+    setSaved(null);
+    setGameCompleted(false);
+    setLaunched(false);
+    setError("");
+  };
+
+  const handleClose = () => {
+    setSaved(null);
+    setGameCompleted(false);
+    setLaunched(false);
+    setError("");
+    onClose();
+  };
+
+  // If we have saved results and the game is still "launched", 
+  // it means the game component is showing its countdown
+  // We should wait for the game's onExit to be called
+  const showGameResults = saved && !launched;
+  const showGameComponent = launched && !saved;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-lg max-w-md w-full">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              {game.icon} {game.name}
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-1 hover:bg-primary/10 rounded-full transition-colors"
-            >
-              <X size={24} />
-            </button>
+    <div className="modal-overlay">
+      <div className="game-modal">
+        <div className="game-modal-header" style={{ background: game.color }}>
+          <div className="game-modal-title">
+            <span style={{ fontSize: 28 }} aria-hidden>{game.icon}</span>
+            <h2>{game.name}</h2>
           </div>
-
-          <p className="text-muted mb-6">{game.description}</p>
-
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3">Select Difficulty</h3>
-            <div className="grid grid-2 gap-3">
-              {difficulties.map((diff) => (
-                <button
-                  key={diff.id}
-                  onClick={() => setSelectedDifficulty(diff.id)}
-                  className={`p-4 rounded-lg border-2 text-left transition-all ${
-                    selectedDifficulty === diff.id
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border-color hover:border-primary/50'
-                  }`}
-                >
-                  <div className="font-semibold mb-1">{diff.name}</div>
-                  <div className="flex items-center gap-1 text-warning mb-1">
-                    <Star size={14} fill="currentColor" />
-                    <span className="text-sm">{diff.points} points</span>
-                  </div>
-                  <div className="text-sm text-muted">{diff.description}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-primary/5 p-4 rounded-lg mb-6">
-            <h4 className="font-semibold mb-2 flex items-center gap-2">
-              <Info size={16} />
-              How to Play
-            </h4>
-            <p className="text-sm text-muted">
-              {game.id === 'number-grid' && 'Memorize number positions and find matching pairs within the time limit.'}
-              {game.id === 'color-grid' && 'Match colors by remembering their positions on the grid.'}
-              {game.id === 'tic-tac-toe' && 'Get three in a row horizontally, vertically, or diagonally before the AI does.'}
-              {game.id === 'quizquest' && 'Answer trivia questions correctly to earn points. Faster answers earn bonus points.'}
-              {game.id === 'chess' && 'Checkmate your opponent\'s king using strategic piece movement.'}
-              {game.id === 'sudoku' && 'Fill the grid so that each row, column, and 3x3 box contains all digits from 1 to 9.'}
-              {game.id === 'crossword' && 'Fill in the crossword puzzle with the correct words based on the clues provided.'}
-            </p>
-          </div>
-
-          <button
-            onClick={handleStartGame}
-            className="btn btn-primary btn-lg w-full flex items-center justify-center gap-2"
-          >
-            <Play size={20} />
-            Start Game - {difficulties.find(d => d.id === selectedDifficulty)?.points} Points
+          <button className="modal-close-btn" onClick={handleClose} aria-label="Close">
+            <X size={18} />
           </button>
+        </div>
+
+        <div className="game-modal-content">
+          {showGameResults ? (
+            <>
+              <div className="game-modal-section">
+                <div className="banner banner-success" style={{ marginTop: 0 }}>
+                  <CheckCircle2 size={18} />
+                  <span>Game Over — your points have been saved!</span>
+                </div>
+                <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div className="card">
+                    <div className="text-muted">Difficulty</div>
+                    <div className="text-2xl font-bold">{DIFF_LABEL[difficulty]}</div>
+                  </div>
+                  <div className="card">
+                    <div className="text-muted">Score</div>
+                    <div className="text-2xl font-bold">{saved.score}</div>
+                  </div>
+                  <div className="card">
+                    <div className="text-muted">Completed</div>
+                    <div className="text-2xl font-bold">{saved.completed ? "Yes" : "No"}</div>
+                  </div>
+                  <div className="card">
+                    <div className="text-muted">Points Earned</div>
+                    <div className="text-2xl font-bold text-success">{saved.pointsEarned}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="game-modal-actions">
+                <button className="btn btn-secondary" onClick={handleClose}>Close</button>
+                <button className="btn btn-primary" onClick={handlePlayAgain}>
+                  Play Again
+                </button>
+              </div>
+            </>
+          ) : !launched ? (
+            <>
+              <div className="game-modal-section">
+                <h3>About</h3>
+                <p>{game.description}</p>
+              </div>
+
+              <div className="game-modal-meta">
+                <div className="difficulty-badge">
+                  <span>Difficulty</span>
+                  <strong>{DIFF_LABEL[difficulty]}</strong>
+                </div>
+                <div className="points-info">
+                  <span>Rewards</span>
+                  <strong>
+                    Easy {POINTS_SYSTEM.easy} • Medium {POINTS_SYSTEM.medium} • Hard {POINTS_SYSTEM.hard} • Extreme {POINTS_SYSTEM.extreme}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="game-modal-section">
+                <h3>Choose difficulty</h3>
+                <div className="flex gap-2" style={{ flexWrap: "wrap" }}>
+                  {["easy","medium","hard","extreme"].map(d => (
+                    <button key={d} className={`btn ${d===difficulty?"btn-primary":""}`} onClick={() => setDifficulty(d)}>
+                      {DIFF_LABEL[d]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {error && <div className="banner banner-error" style={{ marginTop: 4 }}>{error}</div>}
+
+              <div className="game-modal-actions">
+                <button className="btn btn-primary" onClick={start} disabled={saving}>
+                  <PlayCircle size={18} /> Start Game
+                </button>
+                <button className="btn btn-secondary" onClick={handleClose} disabled={saving}>Cancel</button>
+              </div>
+            </>
+          ) : (
+            <>
+              {error && <div className="banner banner-error" style={{ marginBottom: 10 }}>{error}</div>}
+              {renderGame()}
+            </>
+          )}
         </div>
       </div>
     </div>
