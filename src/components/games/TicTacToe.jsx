@@ -1,282 +1,644 @@
-import React, { useState, useEffect } from 'react';
-import { useGame } from '../../hooks';
-import { RefreshCw, X, Circle, Star, Timer, Brain } from 'lucide-react';
+// src/components/games/TicTacToe.jsx
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Users, Bot, Trophy, Home, RotateCcw, Pause, Play, Crown } from 'lucide-react';
+import './tictactoe.css';
 
-const TicTacToe = ({ difficulty, onGameEnd }) => {
-  const [board, setBoard] = useState(Array(9).fill(null));
-  const [isXNext, setIsXNext] = useState(true);
-  const [winner, setWinner] = useState(null);
-  const [score, setScore] = useState({ player: 0, ai: 0, ties: 0 });
-  const [gameOver, setGameOver] = useState(false);
-  const { endGame, updateScore } = useGame();
+const TicTacToe = ({ difficulty = 'easy', onGameEnd, onExit }) => {
+  const [gameMode, setGameMode] = useState(null); // '2player' or 'bot'
+  const [players, setPlayers] = useState({ player1: '', player2: '' });
+  const [gameState, setGameState] = useState(null);
+  const [gameStatus, setGameStatus] = useState('setup'); // 'setup', 'playing', 'paused', 'roundEnd', 'gameEnd'
+  const [currentRound, setCurrentRound] = useState(1);
+  const [scores, setScores] = useState({ player1: 0, player2: 0 });
+  const [roundWinner, setRoundWinner] = useState(null);
+  const [gameResults, setGameResults] = useState(null);
+  const [botThinking, setBotThinking] = useState(false);
 
-  const difficultySettings = {
-    easy: { depth: 1, name: 'Easy' },
-    medium: { depth: 3, name: 'Medium' },
-    hard: { depth: 5, name: 'Hard' },
-    extreme: { depth: 7, name: 'Extreme' }
+  // Difficulty configurations - rounds and win rates
+  const DIFFICULTY_CONFIG = {
+    easy: { 
+      totalRounds: 3,
+      winRate: 0.2,      // 80% user wins
+      smartMoves: 0.3
+    },
+    medium: { 
+      totalRounds: 5,
+      winRate: 0.4,      // 60% user wins
+      smartMoves: 0.6
+    },
+    hard: { 
+      totalRounds: 7,
+      winRate: 0.6,      // 40% user wins
+      smartMoves: 0.8
+    },
+    extreme: { 
+      totalRounds: 10,
+      winRate: 0.8,      // 20% user wins
+      smartMoves: 0.95
+    }
   };
 
-  useEffect(() => {
-    // AI makes move if it's AI's turn and game is not over
-    if (!isXNext && !winner && !gameOver) {
-      setTimeout(() => makeAIMove(), 500);
-    }
-  }, [isXNext, winner, gameOver]);
+  const config = DIFFICULTY_CONFIG[difficulty];
+  const totalRounds = config.totalRounds;
+  const pointsPerWin = 100;
 
-  const calculateWinner = (squares) => {
+  // Initialize game
+  const initializeGame = useCallback(() => {
+    const newGameState = {
+      board: Array(9).fill(null),
+      currentPlayer: 'X',
+      winner: null,
+      winningLine: null,
+      isDraw: false,
+      moveCount: 0
+    };
+    
+    setGameState(newGameState);
+    setGameStatus('playing');
+    setRoundWinner(null);
+    setBotThinking(false);
+  }, []);
+
+  // Check for winner
+  const checkWinner = (board) => {
     const lines = [
       [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
       [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
-      [0, 4, 8], [2, 4, 6]             // diagonals
+      [0, 4, 8], [2, 4, 6] // diagonals
     ];
 
-    for (const [a, b, c] of lines) {
-      if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-        return squares[a];
+    for (let i = 0; i < lines.length; i++) {
+      const [a, b, c] = lines[i];
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+        return { winner: board[a], winningLine: lines[i] };
       }
     }
 
-    if (squares.every(square => square !== null)) {
-      return 'draw';
+    if (board.every(cell => cell !== null)) {
+      return { winner: null, winningLine: null, isDraw: true };
     }
 
     return null;
   };
 
-  const minimax = (squares, depth, isMaximizing, alpha = -Infinity, beta = Infinity) => {
-    const result = calculateWinner(squares);
-    
-    if (result === 'X') return { score: -10 + depth };
-    if (result === 'O') return { score: 10 - depth };
-    if (result === 'draw') return { score: 0 };
-    if (depth === 0) return { score: 0 };
+  // Bot move logic
+  const getBotMove = useCallback((board) => {
+    // Sometimes make random moves based on difficulty
+    if (Math.random() > config.smartMoves) {
+      const emptyCells = board.map((cell, index) => cell === null ? index : null).filter(val => val !== null);
+      return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    }
 
-    if (isMaximizing) {
-      let bestScore = -Infinity;
-      let bestMove = -1;
-
-      for (let i = 0; i < squares.length; i++) {
-        if (squares[i] === null) {
-          squares[i] = 'O';
-          const { score } = minimax(squares, depth - 1, false, alpha, beta);
-          squares[i] = null;
-
-          if (score > bestScore) {
-            bestScore = score;
-            bestMove = i;
-          }
-
-          alpha = Math.max(alpha, bestScore);
-          if (beta <= alpha) break;
+    // Try to win
+    for (let i = 0; i < 9; i++) {
+      if (board[i] === null) {
+        const newBoard = [...board];
+        newBoard[i] = 'O';
+        if (checkWinner(newBoard)?.winner === 'O') {
+          return i;
         }
       }
+    }
 
-      return { score: bestScore, move: bestMove };
-    } else {
-      let bestScore = Infinity;
-      let bestMove = -1;
-
-      for (let i = 0; i < squares.length; i++) {
-        if (squares[i] === null) {
-          squares[i] = 'X';
-          const { score } = minimax(squares, depth - 1, true, alpha, beta);
-          squares[i] = null;
-
-          if (score < bestScore) {
-            bestScore = score;
-            bestMove = i;
-          }
-
-          beta = Math.min(beta, bestScore);
-          if (beta <= alpha) break;
+    // Block player from winning
+    for (let i = 0; i < 9; i++) {
+      if (board[i] === null) {
+        const newBoard = [...board];
+        newBoard[i] = 'X';
+        if (checkWinner(newBoard)?.winner === 'X') {
+          return i;
         }
       }
-
-      return { score: bestScore, move: bestMove };
     }
-  };
 
-  const makeAIMove = () => {
-    const squares = [...board];
-    const { depth } = difficultySettings[difficulty];
-    const { move } = minimax(squares, depth, true);
+    // Strategic moves - center first, then corners, then edges
+    const center = 4;
+    if (board[center] === null) return center;
+
+    const corners = [0, 2, 6, 8];
+    const availableCorners = corners.filter(index => board[index] === null);
+    if (availableCorners.length > 0) {
+      return availableCorners[Math.floor(Math.random() * availableCorners.length)];
+    }
+
+    const edges = [1, 3, 5, 7];
+    const availableEdges = edges.filter(index => board[index] === null);
+    if (availableEdges.length > 0) {
+      return availableEdges[Math.floor(Math.random() * availableEdges.length)];
+    }
+
+    // Fallback to random
+    const emptyCells = board.map((cell, index) => cell === null ? index : null).filter(val => val !== null);
+    return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+  }, [config]);
+
+  // Handle bot move
+  const handleBotMove = useCallback(() => {
+    if (!gameState || gameState.currentPlayer !== 'O' || gameState.winner || gameState.isDraw) {
+      return;
+    }
+
+    setBotThinking(true);
     
-    if (move !== -1) {
-      squares[move] = 'O';
-      setBoard(squares);
-      
-      const newWinner = calculateWinner(squares);
-      if (newWinner) {
-        handleGameEnd(newWinner);
-      } else {
-        setIsXNext(true);
+    // Add a small delay to make bot move feel natural
+    setTimeout(() => {
+      const botMoveIndex = getBotMove(gameState.board);
+      if (botMoveIndex !== undefined && gameState.board[botMoveIndex] === null) {
+        makeMove(botMoveIndex);
       }
+      setBotThinking(false);
+    }, 800);
+  }, [gameState, getBotMove]);
+
+  // Make a move (common function for both player and bot)
+  const makeMove = useCallback((index) => {
+    if (!gameState || gameStatus !== 'playing' || gameState.board[index] !== null || gameState.winner) {
+      return;
     }
-  };
 
-  const handleClick = (index) => {
-    if (winner || board[index] || !isXNext || gameOver) return;
-
-    const squares = [...board];
-    squares[index] = 'X';
-    setBoard(squares);
+    const newBoard = [...gameState.board];
+    newBoard[index] = gameState.currentPlayer;
     
-    const newWinner = calculateWinner(squares);
-    if (newWinner) {
-      handleGameEnd(newWinner);
-    } else {
-      setIsXNext(false);
-    }
-  };
+    const result = checkWinner(newBoard);
+    const newMoveCount = gameState.moveCount + 1;
 
-  const handleGameEnd = async (result) => {
-    setWinner(result);
-    setGameOver(true);
-    
-    let points = 0;
-    if (result === 'X') {
-      points = calculatePoints();
-      setScore(prev => ({ ...prev, player: prev.player + 1 }));
-    } else if (result === 'O') {
-      setScore(prev => ({ ...prev, ai: prev.ai + 1 }));
-    } else {
-      setScore(prev => ({ ...prev, ties: prev.ties + 1 }));
-    }
-
-    if (result === 'X') {
-      updateScore(points);
-      await endGame(1, true); // 1 point for win, completed
-    } else {
-      await endGame(0, false); // 0 points for loss/draw, not completed
-    }
-    
-    setTimeout(() => onGameEnd(), 3000);
-  };
-
-  const calculatePoints = () => {
-    const basePoints = {
-      easy: 25,
-      medium: 50,
-      hard: 75,
-      extreme: 100
+    let newGameState = {
+      ...gameState,
+      board: newBoard,
+      moveCount: newMoveCount,
+      currentPlayer: gameState.currentPlayer === 'X' ? 'O' : 'X'
     };
-    return basePoints[difficulty];
+
+    if (result) {
+      if (result.winner || result.isDraw) {
+        newGameState = {
+          ...newGameState,
+          winner: result.winner,
+          winningLine: result.winningLine,
+          isDraw: result.isDraw
+        };
+        
+        // Handle round end
+        handleRoundEnd(result.winner, result.isDraw);
+      }
+    }
+
+    setGameState(newGameState);
+  }, [gameState, gameStatus]);
+
+  // Handle cell click (player move)
+  const handleCellClick = useCallback((index) => {
+    if (botThinking) return;
+    
+    // In bot mode, only allow moves when it's player's turn
+    if (gameMode === 'bot' && gameState.currentPlayer === 'O') {
+      return;
+    }
+
+    makeMove(index);
+  }, [gameMode, gameState, makeMove, botThinking]);
+
+  // Handle round end
+  const handleRoundEnd = useCallback((winner, isDraw) => {
+    setGameStatus('roundEnd');
+    
+    let winnerName = '';
+    if (isDraw) {
+      setRoundWinner({ type: 'draw' });
+    } else {
+      if (gameMode === '2player') {
+        winnerName = winner === 'X' ? players.player1 : players.player2;
+      } else {
+        winnerName = winner === 'X' ? players.player1 : 'Bot';
+      }
+      
+      setRoundWinner({
+        type: 'win',
+        winner: winnerName,
+        symbol: winner
+      });
+
+      // Update scores
+      setScores(prev => ({
+        ...prev,
+        [winner === 'X' ? 'player1' : 'player2']: prev[winner === 'X' ? 'player1' : 'player2'] + pointsPerWin
+      }));
+    }
+
+    // Check if game should end
+    if (currentRound >= totalRounds) {
+      setTimeout(() => {
+        handleGameEnd();
+      }, 2000);
+    }
+  }, [gameMode, players, currentRound, pointsPerWin, totalRounds]);
+
+  // Handle game end
+  const handleGameEnd = useCallback(() => {
+    const finalWinner = scores.player1 > scores.player2 ? players.player1 : 
+                       scores.player2 > scores.player1 ? (gameMode === '2player' ? players.player2 : 'Bot') : 
+                       'Draw';
+    
+    const finalResults = {
+      winner: finalWinner,
+      scores,
+      totalRounds,
+      gameMode,
+      player1: players.player1,
+      player2: gameMode === '2player' ? players.player2 : 'Bot',
+      difficulty: difficulty
+    };
+
+    setGameResults(finalResults);
+    setGameStatus('gameEnd');
+
+    // Send results to parent
+    if (onGameEnd) {
+      const payload = {
+        completed: true,
+        score: scores.player1 + scores.player2,
+        pointsEarned: scores.player1, // Player 1's points
+        duration: 0, // You can track this if needed
+        meta: {
+          winner: finalWinner,
+          rounds: totalRounds,
+          gameMode,
+          difficulty
+        }
+      };
+      onGameEnd(payload);
+    }
+  }, [scores, players, gameMode, totalRounds, difficulty, onGameEnd]);
+
+  // Start next round
+  const nextRound = () => {
+    if (currentRound < totalRounds) {
+      setCurrentRound(prev => prev + 1);
+      initializeGame();
+    } else {
+      handleGameEnd();
+    }
   };
 
-  const resetGame = () => {
-    setBoard(Array(9).fill(null));
-    setIsXNext(true);
-    setWinner(null);
-    setGameOver(false);
+  // Play again (reset everything)
+  const playAgain = () => {
+    setScores({ player1: 0, player2: 0 });
+    setCurrentRound(1);
+    setGameResults(null);
+    setGameStatus('setup');
   };
 
-  const renderSquare = (index) => {
-    const value = board[index];
-    return (
-      <button
-        className={`
-          w-16 h-16 md:w-20 md:h-20 text-3xl font-bold border-2 border-primary
-          flex items-center justify-center transition-all
-          ${value ? 'cursor-not-allowed' : 'hover:bg-primary/10'}
-          ${winner && value ? 'animate-bounce' : ''}
-        `}
-        onClick={() => handleClick(index)}
-        disabled={!!value || winner || !isXNext}
-      >
-        {value === 'X' ? (
-          <X size={32} className="text-accent" />
-        ) : value === 'O' ? (
-          <Circle size={28} className="text-primary" />
-        ) : null}
-      </button>
-    );
+  // Toggle pause
+  const togglePause = () => {
+    setGameStatus(prev => prev === 'playing' ? 'paused' : 'playing');
   };
 
-  const getStatusMessage = () => {
-    if (winner === 'X') return 'You win! 🎉';
-    if (winner === 'O') return 'AI wins! 🤖';
-    if (winner === 'draw') return 'Draw game! 🤝';
-    return isXNext ? 'Your turn' : 'AI thinking...';
+  // Start game with players
+  const startGame = (mode, player1Name, player2Name = '') => {
+    setGameMode(mode);
+    setPlayers({
+      player1: player1Name || 'Player 1',
+      player2: mode === '2player' ? (player2Name || 'Player 2') : 'Bot'
+    });
+    setCurrentRound(1);
+    setScores({ player1: 0, player2: 0 });
+    initializeGame();
   };
 
-  return (
-    <div className="text-center">
+  // Get current player name
+  const getCurrentPlayerName = () => {
+    if (gameMode === '2player') {
+      return gameState.currentPlayer === 'X' ? players.player1 : players.player2;
+    } else {
+      return gameState.currentPlayer === 'X' ? players.player1 : 'Bot';
+    }
+  };
+
+  // Effect to handle bot moves
+  useEffect(() => {
+    if (gameMode === 'bot' && gameStatus === 'playing' && gameState?.currentPlayer === 'O' && !botThinking) {
+      handleBotMove();
+    }
+  }, [gameMode, gameStatus, gameState, botThinking, handleBotMove]);
+
+  // Render setup screen
+  const renderSetupScreen = () => (
+    <div className="ttt-setup">
+      <div className="ttt-setup-header">
+        <Trophy size={48} className="ttt-icon" />
+        <h1>Tic Tac Toe</h1>
+        <p>Choose your game mode and enter player names</p>
+      </div>
+
+      <div className="ttt-mode-selection">
+        <div className="ttt-mode-options">
+          <button 
+            className="ttt-mode-btn"
+            onClick={() => setGameMode('2player')}
+          >
+            <Users size={24} />
+            <span>Two Players</span>
+            <small>Play with a friend</small>
+          </button>
+          
+          <button 
+            className="ttt-mode-btn"
+            onClick={() => setGameMode('bot')}
+          >
+            <Bot size={24} />
+            <span>Vs Bot</span>
+            <small>Challenge the computer</small>
+          </button>
+        </div>
+
+        {gameMode && (
+          <div className="ttt-player-setup">
+            <h3>
+              {gameMode === '2player' ? 'Enter Player Names' : 'Enter Your Name'}
+            </h3>
+            
+            <div className="ttt-name-inputs">
+              <div className="ttt-input-group">
+                <label>Player 1 (X)</label>
+                <input
+                  type="text"
+                  placeholder="Enter name for Player 1"
+                  value={players.player1}
+                  onChange={(e) => setPlayers(prev => ({ ...prev, player1: e.target.value }))}
+                  maxLength={20}
+                />
+              </div>
+
+              {gameMode === '2player' && (
+                <div className="ttt-input-group">
+                  <label>Player 2 (O)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter name for Player 2"
+                    value={players.player2}
+                    onChange={(e) => setPlayers(prev => ({ ...prev, player2: e.target.value }))}
+                    maxLength={20}
+                  />
+                </div>
+              )}
+
+              {gameMode === 'bot' && (
+                <div className="ttt-difficulty-info">
+                  <div className="ttt-difficulty-header">
+                    <label>Bot Difficulty: <strong>{difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}</strong></label>
+                  </div>
+                  <div className="ttt-difficulty-stats">
+                    <div className="ttt-stat">
+                      <span>Rounds:</span>
+                      <strong>{totalRounds}</strong>
+                    </div>
+                    <div className="ttt-stat">
+                      <span>Your Win Chance:</span>
+                      <strong>{
+                        difficulty === 'easy' ? '80%' :
+                        difficulty === 'medium' ? '60%' :
+                        difficulty === 'hard' ? '40%' :
+                        '20%'
+                      }</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button 
+              className="btn btn-primary ttt-start-btn"
+              onClick={() => startGame(gameMode, players.player1, players.player2)}
+              disabled={!players.player1.trim() || (gameMode === '2player' && !players.player2.trim())}
+            >
+              Start Game - {totalRounds} Rounds
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Render game board
+  const renderGameBoard = () => (
+    <div className="ttt-game">
       {/* Game Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <Brain size={20} />
-          <span className="font-semibold">{difficultySettings[difficulty].name}</span>
+      <div className="ttt-game-header">
+        <div className="ttt-game-info">
+          <div className="ttt-round">Round {currentRound} of {totalRounds}</div>
+          <div className="ttt-mode-badge">
+            {gameMode === '2player' ? '2 Players' : 'Vs Bot'}
+          </div>
+          {gameMode === 'bot' && (
+            <div className="ttt-difficulty-badge">
+              {difficulty.toUpperCase()}
+            </div>
+          )}
         </div>
         
-        <div className="flex items-center gap-2">
-          <Star size={20} className="text-warning" />
-          <span className="font-semibold">{calculatePoints()} points for win</span>
+        <div className="ttt-scores">
+          <div className="ttt-score">
+            <span className="ttt-player-name">{players.player1}</span>
+            <span className="ttt-score-value">{scores.player1}</span>
+          </div>
+          <div className="ttt-vs">VS</div>
+          <div className="ttt-score">
+            <span className="ttt-player-name">
+              {gameMode === '2player' ? players.player2 : 'Bot'}
+            </span>
+            <span className="ttt-score-value">{scores.player2}</span>
+          </div>
         </div>
       </div>
 
-      {/* Score Board */}
-      <div className="grid grid-3 gap-4 mb-6">
-        <div className="bg-card p-3 rounded-lg">
-          <div className="text-2xl font-bold text-accent">{score.player}</div>
-          <div className="text-sm text-muted">You</div>
+      {/* Current Player */}
+      <div className="ttt-current-player">
+        <div className={`ttt-turn-indicator ${gameState.currentPlayer === 'X' ? 'player1' : 'player2'} ${botThinking ? 'bot-thinking' : ''}`}>
+          <span>Current Turn:</span>
+          <strong>
+            {botThinking ? 'Bot Thinking...' : getCurrentPlayerName()}
+          </strong>
+          <div className={`ttt-symbol ${gameState.currentPlayer.toLowerCase()}`}>
+            {gameState.currentPlayer}
+          </div>
         </div>
-        <div className="bg-card p-3 rounded-lg">
-          <div className="text-2xl font-bold text-primary">{score.ties}</div>
-          <div className="text-sm text-muted">Draws</div>
-        </div>
-        <div className="bg-card p-3 rounded-lg">
-          <div className="text-2xl font-bold text-gray-400">{score.ai}</div>
-          <div className="text-sm text-muted">AI</div>
-        </div>
-      </div>
-
-      {/* Game Status */}
-      <div className={`text-lg font-semibold mb-4 ${
-        winner === 'X' ? 'text-success' :
-        winner === 'O' ? 'text-danger' :
-        'text-primary'
-      }`}>
-        {getStatusMessage()}
       </div>
 
       {/* Game Board */}
-      <div className="grid grid-3 gap-2 mx-auto mb-6" style={{ maxWidth: '300px' }}>
-        {[0, 1, 2].map(row => (
-          <div key={row} className="grid grid-3 gap-2">
-            {[0, 1, 2].map(col => renderSquare(row * 3 + col))}
-          </div>
+      <div className="ttt-board">
+        {gameState.board.map((cell, index) => (
+          <button
+            key={index}
+            className={`ttt-cell ${
+              cell ? `ttt-cell-${cell.toLowerCase()}` : ''
+            } ${
+              gameState.winningLine?.includes(index) ? 'winning' : ''
+            } ${botThinking ? 'disabled' : ''}`}
+            onClick={() => handleCellClick(index)}
+            disabled={cell !== null || gameState.winner || gameState.isDraw || botThinking}
+          >
+            {cell && <span>{cell}</span>}
+          </button>
         ))}
       </div>
 
       {/* Game Controls */}
-      <div className="flex gap-4 justify-center">
-        <button 
-          onClick={resetGame}
-          className="btn btn-secondary"
-          disabled={!gameOver}
-        >
-          <RefreshCw size={16} className="mr-2" />
-          New Game
+      <div className="ttt-controls">
+        <button className="btn btn-secondary" onClick={togglePause} disabled={botThinking}>
+          {gameStatus === 'paused' ? <Play size={16} /> : <Pause size={16} />}
+          {gameStatus === 'paused' ? 'Resume' : 'Pause'}
         </button>
-        
-        <button 
-          onClick={() => onGameEnd()}
-          className="btn btn-danger"
-        >
+        <button className="btn btn-secondary" onClick={initializeGame} disabled={botThinking}>
+          <RotateCcw size={16} />
+          Restart Round
+        </button>
+        <button className="btn btn-secondary" onClick={onExit} disabled={botThinking}>
+          <Home size={16} />
           Exit Game
         </button>
       </div>
+    </div>
+  );
 
-      {/* Instructions */}
-      {!gameOver && (
-        <div className="mt-6 p-4 bg-primary/5 rounded-lg">
-          <p className="text-sm text-muted">
-            Get three in a row horizontally, vertically, or diagonally to win. 
-            You play as X, the AI plays as O.
-          </p>
+  // Render round end screen
+  const renderRoundEnd = () => (
+    <div className="ttt-round-end">
+      <div className="ttt-round-result">
+        {roundWinner.type === 'draw' ? (
+          <>
+            <div className="ttt-result-icon">🤝</div>
+            <h2>Round Draw!</h2>
+            <p>No points awarded for this round</p>
+          </>
+        ) : (
+          <>
+            <div className="ttt-result-icon">🎉</div>
+            <h2>
+              {roundWinner.winner === 'Bot' ? 'Hehe Bot Wins!' : `Wow ${roundWinner.winner} Wins!`}
+            </h2>
+            <p className="ttt-points-awarded">+{pointsPerWin} points awarded!</p>
+          </>
+        )}
+        
+        <div className="ttt-scores-display">
+          <div className="ttt-score-display">
+            <span>{players.player1}</span>
+            <strong>{scores.player1}</strong>
+          </div>
+          <div className="ttt-vs">VS</div>
+          <div className="ttt-score-display">
+            <span>{gameMode === '2player' ? players.player2 : 'Bot'}</span>
+            <strong>{scores.player2}</strong>
+          </div>
         </div>
-      )}
+
+        <div className="ttt-round-progress">
+          <div className="ttt-progress-text">
+            Round {currentRound} of {totalRounds}
+          </div>
+          <div className="ttt-progress-bar">
+            <div 
+              className="ttt-progress-fill" 
+              style={{ width: `${(currentRound / totalRounds) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        <button className="btn btn-primary" onClick={nextRound}>
+          {currentRound < totalRounds ? 'Next Round' : 'See Final Results'}
+        </button>
+      </div>
+    </div>
+  );
+
+  // Render game end screen
+  const renderGameEnd = () => (
+    <div className="ttt-game-end">
+      <div className="ttt-final-results">
+        <Trophy size={64} className="ttt-trophy" />
+        
+        <h1>Game Complete!</h1>
+        
+        <div className="ttt-final-winner">
+          {gameResults.winner === 'Draw' ? (
+            <>
+              <div className="ttt-winner-icon">🤝</div>
+              <h2>It's a Draw!</h2>
+            </>
+          ) : (
+            <>
+              <Crown size={32} className="ttt-crown" />
+              <h2>
+                {gameResults.winner === 'Bot' ? 'Bot Wins the Game!' : `${gameResults.winner} Wins the Game!`}
+              </h2>
+            </>
+          )}
+        </div>
+
+        <div className="ttt-final-scores">
+          <div className="ttt-final-score">
+            <span className="ttt-player-label">{players.player1}</span>
+            <span className="ttt-score-value">{scores.player1}</span>
+            {gameResults.winner === players.player1 && <div className="ttt-winner-badge">Winner</div>}
+          </div>
+          <div className="ttt-final-score">
+            <span className="ttt-player-label">{gameMode === '2player' ? players.player2 : 'Bot'}</span>
+            <span className="ttt-score-value">{scores.player2}</span>
+            {gameResults.winner === (gameMode === '2player' ? players.player2 : 'Bot') && <div className="ttt-winner-badge">Winner</div>}
+          </div>
+        </div>
+
+        <div className="ttt-game-stats">
+          <div className="ttt-stat-item">
+            <span>Total Rounds:</span>
+            <strong>{totalRounds}</strong>
+          </div>
+          <div className="ttt-stat-item">
+            <span>Difficulty:</span>
+            <strong>{difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}</strong>
+          </div>
+          <div className="ttt-stat-item">
+            <span>Total Points:</span>
+            <strong>{scores.player1 + scores.player2}</strong>
+          </div>
+        </div>
+
+        <div className="ttt-final-actions">
+          <button className="btn btn-secondary" onClick={onExit}>
+            <Home size={18} />
+            Exit Game
+          </button>
+          <button className="btn btn-primary" onClick={playAgain}>
+            <RotateCcw size={18} />
+            Play Again
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render paused screen
+  const renderPausedScreen = () => (
+    <div className="ttt-paused">
+      <div className="ttt-paused-content">
+        <Pause size={48} />
+        <h2>Game Paused</h2>
+        <p>Take your time...</p>
+        <button className="btn btn-primary" onClick={togglePause}>
+          <Play size={16} />
+          Resume Game
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="ttt-shell">
+      {gameStatus === 'setup' && renderSetupScreen()}
+      {gameStatus === 'playing' && renderGameBoard()}
+      {gameStatus === 'roundEnd' && renderRoundEnd()}
+      {gameStatus === 'gameEnd' && renderGameEnd()}
+      {gameStatus === 'paused' && renderPausedScreen()}
     </div>
   );
 };

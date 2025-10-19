@@ -1519,3 +1519,11 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
   outline: 2px solid var(--success);
   outline-offset: 2px;
 }
+
+
+/* Milestones */
+.milestone { background: rgba(255,255,255,.02); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.milestone-head { display:flex; align-items:center; justify-content:space-between; color: var(--text-dim); margin-bottom:8px; }
+.milestone-head strong { color: var(--text); }
+.milestone-bar { height: 10px; background: #0b1320; border:1px solid #223244; border-radius: 999px; overflow: hidden; }
+.milestone-bar > div { height:100%; width:0; background: linear-gradient(90deg, var(--primary), var(--success)); transition: width .4s ease; }
