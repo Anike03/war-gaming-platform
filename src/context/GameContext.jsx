@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { useAuth } from "./AuthContext";         // keep your path
-import { db } from "../utils/firebase";          // keep your path
+import { useAuth } from "./AuthContext";
+import { db } from "../utils/firebase";
 import {
   collection,
   addDoc,
@@ -21,13 +21,14 @@ export function useGame() {
 }
 
 export function GameProvider({ children }) {
-  const { currentUser, addPoints } = useAuth();
+  const { currentUser, addPoints, userData } = useAuth();
 
   const [currentGame, setCurrentGame] = useState(null);
   const [gameScore, setGameScore] = useState(0);
   const [gameHistory, setGameHistory] = useState([]);
-  const [leaderboard, setLeaderboard] = useState([]);           // legacy: per-match
-  const [pointsLeaderboard, setPointsLeaderboard] = useState([]); // NEW: per-user totals
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [pointsLeaderboard, setPointsLeaderboard] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const POINTS_SYSTEM = useMemo(
     () => ({ easy: 25, medium: 50, hard: 75, extreme: 100 }),
@@ -37,6 +38,64 @@ export function GameProvider({ children }) {
   const startGame = (gameName, difficulty) => {
     setCurrentGame({ name: gameName, difficulty, startTime: new Date() });
     setGameScore(0);
+  };
+
+  // NEW: Enhanced saveGameResult function that works with GameModal
+  const saveGameResult = async (gameData) => {
+    if (!currentUser) {
+      console.error("No user logged in");
+      return null;
+    }
+
+    const {
+      gameId,
+      gameName,
+      difficulty,
+      score,
+      completed,
+      pointsEarned,
+      duration,
+      meta = {}
+    } = gameData;
+
+    const gameResult = {
+      name: gameName,
+      gameId,
+      difficulty,
+      score: Math.max(0, Math.floor(score || 0)),
+      completed: !!completed,
+      pointsEarned: Math.max(0, Math.floor(pointsEarned || 0)),
+      duration: Math.max(0, Math.floor(duration || 0)),
+      userId: currentUser.uid,
+      meta,
+      createdAt: Timestamp.now(),
+      startTime: currentGame?.startTime || new Date(),
+      endTime: new Date()
+    };
+
+    try {
+      const gamesRef = collection(db, "games");
+      const docRef = await addDoc(gamesRef, gameResult);
+
+      gameResult.id = docRef.id;
+
+      // Add points to user if earned
+      if (gameResult.pointsEarned > 0) {
+        await addPoints(
+          gameResult.pointsEarned, 
+          `Completed ${gameName} (${difficulty})`
+        );
+      }
+
+      // Update local game history immediately
+      setGameHistory(prev => [gameResult, ...prev]);
+      
+      console.log("Game result saved successfully:", gameResult);
+      return gameResult;
+    } catch (err) {
+      console.error("Error saving game result:", err);
+      throw err;
+    }
   };
 
   const endGame = async (score, completed = true) => {
@@ -90,7 +149,7 @@ export function GameProvider({ children }) {
 
   const updateScore = (pts) => setGameScore((s) => s + pts);
 
-  /** Legacy per-match leaderboard (kept if other pages still use it) */
+  /** Legacy per-match leaderboard */
   const getLeaderboard = async (gameName = null, difficulty = null, limitCount = 50) => {
     try {
       let qRef = query(
@@ -116,7 +175,7 @@ export function GameProvider({ children }) {
     }
   };
 
-  /** ✅ Points-only leaderboard: read users ordered by points desc */
+  /** Points-only leaderboard */
   const getPointsLeaderboard = async (limitCount = 100) => {
     try {
       const qRef = query(
@@ -129,7 +188,7 @@ export function GameProvider({ children }) {
       const list = snap.docs.map((d) => {
         const data = d.data() || {};
         return {
-          userId: data.uid || d.id,                          // support either layout
+          userId: data.uid || d.id,
           totalPoints: Number(data.points || 0),
           user: {
             displayName: data.displayName || "Anonymous",
@@ -148,24 +207,93 @@ export function GameProvider({ children }) {
     }
   };
 
-  /** Current user's recent matches */
-  const getUserGameHistory = async (userId = null, limitCount = 20) => {
+  /** Current user's recent matches - UPDATED with better error handling */
+  const getUserGameHistory = async (userId = null, limitCount = 50) => {
     const uid = userId || currentUser?.uid;
-    if (!uid) return [];
+    if (!uid) {
+      console.log("No user ID provided for game history");
+      return [];
+    }
+    
+    setLoadingHistory(true);
     try {
+      // Try the optimized query first (requires index)
       const qRef = query(
         collection(db, "games"),
         where("userId", "==", uid),
-        orderBy("createdAt", "desc")
+        orderBy("createdAt", "desc"),
+        qlimit(limitCount)
       );
+      
       const snap = await getDocs(qRef);
       const history = [];
-      snap.forEach((d) => history.push({ id: d.id, ...d.data() }));
-      return history.slice(0, limitCount);
+      snap.forEach((d) => {
+        const data = d.data();
+        history.push({ 
+          id: d.id, 
+          ...data,
+          createdAt: data.createdAt || Timestamp.now(),
+          score: data.score || 0,
+          pointsEarned: data.pointsEarned || 0,
+          completed: data.completed || false,
+          duration: data.duration || 0,
+          difficulty: data.difficulty || 'easy',
+          name: data.name || data.gameName || 'Unknown Game'
+        });
+      });
+      
+      console.log(`Loaded ${history.length} games for user ${uid}`);
+      return history;
     } catch (e) {
-      console.error("getUserGameHistory failed:", e);
-      return [];
+      console.error("getUserGameHistory failed with optimized query, trying fallback:", e);
+      
+      // Fallback: Simple query without ordering
+      try {
+        const qRef = query(
+          collection(db, "games"),
+          where("userId", "==", uid)
+        );
+        const snap = await getDocs(qRef);
+        const history = [];
+        snap.forEach((d) => {
+          const data = d.data();
+          history.push({ 
+            id: d.id, 
+            ...data,
+            createdAt: data.createdAt || Timestamp.now(),
+            score: data.score || 0,
+            pointsEarned: data.pointsEarned || 0,
+            completed: data.completed || false,
+            duration: data.duration || 0,
+            difficulty: data.difficulty || 'easy',
+            name: data.name || data.gameName || 'Unknown Game'
+          });
+        });
+        
+        // Sort manually on client side
+        history.sort((a, b) => {
+          const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+          const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+          return dateB - dateA; // Descending order
+        });
+        
+        console.log(`Fallback loaded ${history.length} games for user ${uid}`);
+        return history.slice(0, limitCount);
+      } catch (fallbackError) {
+        console.error("Fallback getUserGameHistory also failed:", fallbackError);
+        return [];
+      }
+    } finally {
+      setLoadingHistory(false);
     }
+  };
+
+  /** NEW: Force refresh game history */
+  const refreshGameHistory = async () => {
+    if (!currentUser?.uid) return;
+    const history = await getUserGameHistory(currentUser.uid);
+    setGameHistory(history);
+    return history;
   };
 
   // Helpers --------------------------------------------------------
@@ -191,38 +319,49 @@ export function GameProvider({ children }) {
     return out;
   }
 
-  // Boot
+  // Load game history when user changes - ENHANCED
   useEffect(() => {
-    (async () => {
-      if (!currentUser) {
+    const loadGameHistory = async () => {
+      if (!currentUser?.uid) {
         setGameHistory([]);
-        setPointsLeaderboard([]);
         return;
       }
-      const myHistory = await getUserGameHistory();
-      setGameHistory(myHistory);
-      await getPointsLeaderboard();
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      
+      console.log("Loading game history for user:", currentUser.uid);
+      const history = await getUserGameHistory(currentUser.uid);
+      setGameHistory(history);
+    };
+
+    loadGameHistory();
   }, [currentUser?.uid]);
+
+  // Also load points leaderboard
+  useEffect(() => {
+    if (currentUser) {
+      getPointsLeaderboard();
+    }
+  }, [currentUser]);
 
   const value = {
     // state
     currentGame,
     gameScore,
     gameHistory,
-    leaderboard,            // legacy
-    pointsLeaderboard,      // ✅ points-only
+    leaderboard,
+    pointsLeaderboard,
+    loadingHistory,
 
     // actions
     startGame,
     endGame,
     updateScore,
+    saveGameResult,
+    refreshGameHistory,
 
     // loaders
-    getLeaderboard,           // legacy (per match)
-    getPointsLeaderboard,     // ✅ points-only
-    getLeaderboardByPoints: getPointsLeaderboard, // alias for older code
+    getLeaderboard,
+    getPointsLeaderboard,
+    getLeaderboardByPoints: getPointsLeaderboard,
     getUserGameHistory,
 
     // config

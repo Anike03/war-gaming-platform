@@ -1,5 +1,5 @@
 // src/components/games/GameModal.jsx
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { X, PlayCircle, CheckCircle2, Star, Target, Zap } from "lucide-react";
 
 // Game components
@@ -36,12 +36,18 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
   const [saved, setSaved] = useState(null);
   const [error, setError] = useState("");
   const [gameCompleted, setGameCompleted] = useState(false);
+  
+  // Countdown state
+  const [countdown, setCountdown] = useState(15);
+  const countdownRef = useRef(null);
+  const submittedRef = useRef(false);
 
   const start = () => { 
     setError(""); 
     setLaunched(true); 
     setGameCompleted(false);
     setSaved(null);
+    setCountdown(15); // Reset countdown
   };
 
   const handleChildEnd = useCallback(
@@ -67,28 +73,29 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
         setError("");
         setGameCompleted(true);
 
-        if (typeof onGameEnd === "function") {
-          await onGameEnd({
-            ...safe,
-            gameId: game.id,
-            gameName: game.name,
-            difficulty,
-            endedAt: new Date().toISOString(),
-          });
-        } else {
-          await saveGameResult({
-            gameId: game.id,
-            gameName: game.name,
-            difficulty,
-            score: safe.score,
-            completed: safe.completed,
-            pointsEarned: safe.pointsEarned,
-            duration: safe.duration,
-          });
-        }
+        // Use the new saveGameResult function
+        const savedResult = await saveGameResult({
+          gameId: game.id,
+          gameName: game.name,
+          difficulty,
+          score: safe.score,
+          completed: safe.completed,
+          pointsEarned: safe.pointsEarned,
+          duration: safe.duration,
+          meta: payload.meta || {}
+        });
 
         // Store the saved result to show later
-        setSaved(safe);
+        setSaved({
+          score: safe.score,
+          completed: safe.completed,
+          pointsEarned: safe.pointsEarned,
+          difficulty,
+          ...savedResult
+        });
+        
+        // Start countdown after successful save
+        startCountdown();
         
       } catch (e) {
         setError(e?.message || "Could not save your result. Please try again.");
@@ -97,20 +104,35 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
         setSaving(false);
       }
     },
-    [POINTS_SYSTEM, difficulty, game?.id, game?.name, onGameEnd, saveGameResult, gameCompleted]
+    [POINTS_SYSTEM, difficulty, game?.id, game?.name, saveGameResult, gameCompleted]
   );
+
+  // Start countdown function
+  const startCountdown = () => {
+    setCountdown(15);
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
+    
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current);
+          handleClose();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   // This function handles when the game wants to exit (after countdown)
   const handleGameExit = useCallback(() => {
-    // If we have saved results, show them instead of closing
-    if (saved) {
-      // We're already showing the results via the saved state
-      console.log("Game exit called with saved results");
-    } else {
-      // No results yet, just close
-      onClose();
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
     }
-  }, [saved, onClose]);
+    onClose();
+  }, [onClose]);
 
   const commonProps = { 
     difficulty, 
@@ -132,13 +154,20 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
   };
 
   const handlePlayAgain = () => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
     setSaved(null);
     setGameCompleted(false);
     setLaunched(false);
     setError("");
+    setCountdown(15);
   };
 
   const handleClose = () => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
     setSaved(null);
     setGameCompleted(false);
     setLaunched(false);
@@ -146,11 +175,14 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
     onClose();
   };
 
-  // If we have saved results and the game is still "launched", 
-  // it means the game component is showing its countdown
-  // We should wait for the game's onExit to be called
-  const showGameResults = saved && !launched;
-  const showGameComponent = launched && !saved;
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+    };
+  }, []);
 
   // Game-specific descriptions and features
   const getGameFeatures = () => {
@@ -201,6 +233,12 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
         return <Star className="text-white" size={24} />;
     }
   };
+
+  // If we have saved results and the game is still "launched", 
+  // it means the game component is showing its countdown
+  // We should wait for the game's onExit to be called
+  const showGameResults = saved && !launched;
+  const showGameComponent = launched && !saved;
 
   return (
     <div className="modal-overlay">
@@ -267,11 +305,24 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
                     <span>Mission Accomplished!</span>
                   </div>
                 )}
+
+                {/* Countdown Timer */}
+                <div className="countdown-timer">
+                  <div className="countdown-text">
+                    Returning to games in <span className="countdown-number">{countdown}</span> seconds
+                  </div>
+                  <div className="countdown-bar">
+                    <div 
+                      className="countdown-progress" 
+                      style={{ width: `${(countdown / 15) * 100}%` }}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="game-modal-actions">
                 <button className="btn btn-secondary" onClick={handleClose}>
-                  Back to Games
+                  Back to Games Now
                 </button>
                 <button className="btn btn-primary" onClick={handlePlayAgain}>
                   <PlayCircle size={18} />
@@ -709,6 +760,42 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
           font-size: 14px;
           font-weight: 600;
           margin-top: 16px;
+        }
+
+        /* Countdown Timer Styles */
+        .countdown-timer {
+          margin-top: 20px;
+          padding: 16px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .countdown-text {
+          text-align: center;
+          color: rgba(255, 255, 255, 0.8);
+          margin-bottom: 12px;
+          font-size: 14px;
+        }
+
+        .countdown-number {
+          font-weight: bold;
+          color: #3b82f6;
+          font-size: 16px;
+        }
+
+        .countdown-bar {
+          height: 6px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 3px;
+          overflow: hidden;
+        }
+
+        .countdown-progress {
+          height: 100%;
+          background: linear-gradient(90deg, #3b82f6, #6366f1);
+          border-radius: 3px;
+          transition: width 1s linear;
         }
 
         .banner {
