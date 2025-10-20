@@ -146,10 +146,54 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
       case "color-grid":  return <ColorGrid {...commonProps} />;
       case "tic-tac-toe": return <TicTacToe {...commonProps} />;
       case "quizquest":   return <QuizQuest {...commonProps} />;
-      case "chess":       return <Chess {...commonProps} />;
-      case "sudoku":      return <Sudoku {...commonProps} />;
-      case "crossword":   return <Crossword {...commonProps} />;
-      default:            return <div className="p-4">Coming soon…</div>;
+      case "chess":       
+      case "sudoku":      
+      case "crossword":   
+        return (
+          <div className="coming-soon-container">
+            <div className="coming-soon-content">
+              <div className="coming-soon-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              </div>
+              <h2 className="coming-soon-title">Coming Soon</h2>
+              <p className="coming-soon-message">
+                This game is not available right now. We're working hard to bring it to you soon!
+              </p>
+              <div className="contact-developer">
+                <p>Want to see this game sooner?</p>
+                <button 
+                  className="btn btn-primary contact-btn"
+                  onClick={() => window.open('mailto:developer@example.com?subject=Request for ' + game.name + ' Game')}
+                >
+                  Contact Developer
+                </button>
+              </div>
+              <div className="game-preview">
+                <h4>About {game.name}:</h4>
+                {game.id === "chess" && (
+                  <p>Classic strategy game with AI opponents and multiplayer support. Test your tactical skills in this timeless game of kings and queens.</p>
+                )}
+                {game.id === "sudoku" && (
+                  <p>Challenge your logical thinking with number puzzles featuring multiple difficulty levels, hints, and daily challenges.</p>
+                )}
+                {game.id === "crossword" && (
+                  <p>Expand your vocabulary with word puzzles featuring daily updates, themed challenges, and progressive difficulty.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      default:            
+        return (
+          <div className="coming-soon-container">
+            <div className="coming-soon-content">
+              <h2 className="coming-soon-title">Coming Soon</h2>
+              <p className="coming-soon-message">This game is currently in development.</p>
+            </div>
+          </div>
+        );
     }
   };
 
@@ -212,6 +256,30 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
           "Quick strategic matches",
           "Perfect for short gaming sessions"
         ];
+      case "chess":
+        return [
+          "Classic chess with modern interface",
+          "Multiple AI difficulty levels",
+          "Learn with hint system and move suggestions",
+          "Puzzle modes and daily challenges",
+          "Competitive ranking system"
+        ];
+      case "sudoku":
+        return [
+          "Traditional 9x9 number puzzles",
+          "Multiple difficulty levels from beginner to expert",
+          "Hint system and error checking",
+          "Timer and scoring system",
+          "Daily challenges and achievements"
+        ];
+      case "crossword":
+        return [
+          "Daily updated crossword puzzles",
+          "Various themes and categories",
+          "Hint system and word suggestions",
+          "Progress saving across devices",
+          "Competitive leaderboards"
+        ];
       default:
         return [
           "Engaging gameplay mechanics",
@@ -229,6 +297,12 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
         return <Target className="text-white" size={24} />;
       case "number-grid":
         return <Zap className="text-white" size={24} />;
+      case "chess":
+        return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a2 2 0 0 0-2 2v1H8V4a2 2 0 0 0-4 0v1H2v2h2v8H2v2h2v1a2 2 0 0 0 4 0v-1h2v1a2 2 0 0 0 4 0v-1h2v1a2 2 0 0 0 4 0v-1h2v-2h-2V8h2V6h-2V4a2 2 0 0 0-4 0v1h-2V4a2 2 0 0 0-2-2z"/></svg>;
+      case "sudoku":
+        return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>;
+      case "crossword":
+        return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>;
       default:
         return <Star className="text-white" size={24} />;
     }
@@ -798,6 +872,91 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
           transition: width 1s linear;
         }
 
+        /* Coming Soon Styles */
+        .coming-soon-container {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 400px;
+          padding: 40px 20px;
+        }
+
+        .coming-soon-content {
+          text-align: center;
+          max-width: 500px;
+          width: 100%;
+        }
+
+        .coming-soon-icon {
+          margin: 0 auto 24px;
+          color: rgba(255, 255, 255, 0.3);
+          width: 80px;
+          height: 80px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 50%;
+          margin-bottom: 24px;
+        }
+
+        .coming-soon-title {
+          font-size: 32px;
+          font-weight: 700;
+          color: white;
+          margin: 0 0 16px 0;
+          background: linear-gradient(45deg, #3b82f6, #6366f1);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .coming-soon-message {
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 16px;
+          line-height: 1.6;
+          margin-bottom: 24px;
+        }
+
+        .contact-developer {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          padding: 20px;
+          margin: 24px 0;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .contact-developer p {
+          margin: 0 0 16px 0;
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 14px;
+        }
+
+        .contact-btn {
+          background: linear-gradient(45deg, #8b5cf6, #a855f7);
+        }
+
+        .game-preview {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          padding: 20px;
+          margin-top: 24px;
+          text-align: left;
+        }
+
+        .game-preview h4 {
+          margin: 0 0 12px 0;
+          color: white;
+          font-size: 16px;
+        }
+
+        .game-preview p {
+          margin: 0;
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
         .banner {
           display: flex;
           align-items: center;
@@ -910,6 +1069,15 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
           .btn {
             width: 100%;
             justify-content: center;
+          }
+
+          .coming-soon-container {
+            min-height: 300px;
+            padding: 20px;
+          }
+          
+          .coming-soon-title {
+            font-size: 24px;
           }
         }
 

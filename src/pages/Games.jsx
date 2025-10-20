@@ -145,14 +145,25 @@ const Games = () => {
               <div className="p-4">
                 <p className="text-muted mb-4">{game.description}</p>
 
-                {/* Difficulties shown as small badges */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {game.difficulties.map(level => (
-                    <span key={level} className="badge badge-secondary text-sm">
-                      {level.charAt(0).toUpperCase() + level.slice(1)}
-                    </span>
-                  ))}
-                </div>
+                {/* Centered gaming-style difficulty badges with icons */}
+<div className="difficulty-levels mb-4">
+  {game.difficulties.map(level => (
+    <span 
+      key={level} 
+      className={`difficulty-chip difficulty-${level}`}
+    >
+      <span className="difficulty-icon">
+        {level === 'easy' && '🎯'}
+        {level === 'medium' && '⚡'}
+        {level === 'hard' && '🔥'}
+        {level === 'extreme' && '💀'}
+      </span>
+      <span className="difficulty-text">
+        {level.charAt(0).toUpperCase() + level.slice(1)}
+      </span>
+    </span>
+  ))}
+</div>
 
                 {/* Stats (if any) */}
                 {stats && (

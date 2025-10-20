@@ -1525,3 +1525,223 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
 .milestone-head strong { color: var(--text); }
 .milestone-bar { height: 10px; background: #0b1320; border:1px solid #223244; border-radius: 999px; overflow: hidden; }
 .milestone-bar > div { height:100%; width:0; background: linear-gradient(90deg, var(--primary), var(--success)); transition: width .4s ease; }
+
+
+
+/* ==========================================================================
+   Stylish Gaming Difficulty Badges
+   ========================================================================== */
+
+.difficulty-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+  justify-content: center; /* Center the badges */
+  align-items: center;
+}
+
+.difficulty-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center; /* Center content */
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  min-height: 32px;
+  min-width: 100px; /* Equal width for all badges */
+  text-align: center;
+  flex: 0 0 auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Glow effect on hover */
+.difficulty-chip::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transition: left 0.6s ease;
+}
+
+.difficulty-chip:hover::before {
+  left: 100%;
+}
+
+.difficulty-icon {
+  font-size: 1rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  transition: transform 0.3s ease;
+}
+
+.difficulty-text {
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Easy - Green theme */
+.difficulty-easy {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1));
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.5);
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.2);
+}
+
+.difficulty-easy:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(34, 197, 94, 0.15));
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Medium - Yellow/Orange theme */
+.difficulty-medium {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(234, 179, 8, 0.1));
+  color: #fde047;
+  border-color: rgba(234, 179, 8, 0.5);
+  box-shadow: 0 4px 15px rgba(234, 179, 8, 0.2);
+}
+
+.difficulty-medium:hover {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(234, 179, 8, 0.15));
+  box-shadow: 0 6px 20px rgba(234, 179, 8, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Hard - Orange/Red theme */
+.difficulty-hard {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(249, 115, 22, 0.1));
+  color: #fdba74;
+  border-color: rgba(249, 115, 22, 0.5);
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.2);
+}
+
+.difficulty-hard:hover {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.25), rgba(249, 115, 22, 0.15));
+  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Extreme - Red/Purple theme with animation */
+.difficulty-extreme {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(168, 85, 247, 0.15));
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+  animation: extreme-pulse 2s ease-in-out infinite;
+}
+
+.difficulty-extreme:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(168, 85, 247, 0.2));
+  box-shadow: 0 6px 25px rgba(239, 68, 68, 0.4);
+  transform: translateY(-2px);
+  animation: extreme-pulse-hover 1.5s ease-in-out infinite;
+}
+
+@keyframes extreme-pulse {
+  0%, 100% {
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 25px rgba(239, 68, 68, 0.5);
+  }
+}
+
+@keyframes extreme-pulse-hover {
+  0%, 100% {
+    box-shadow: 0 6px 25px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 6px 30px rgba(239, 68, 68, 0.6);
+  }
+}
+
+/* Icon animations on hover */
+.difficulty-chip:hover .difficulty-icon {
+  transform: scale(1.2) rotate(5deg);
+}
+
+.difficulty-extreme .difficulty-icon {
+  animation: skull-shake 3s ease-in-out infinite;
+}
+
+@keyframes skull-shake {
+  0%, 90%, 100% {
+    transform: rotate(0deg);
+  }
+  92%, 96% {
+    transform: rotate(10deg);
+  }
+  94%, 98% {
+    transform: rotate(-10deg);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .difficulty-levels {
+    gap: 8px;
+  }
+  
+  .difficulty-chip {
+    padding: 6px 14px;
+    font-size: 0.75rem;
+    min-height: 30px;
+    min-width: 90px;
+    gap: 6px;
+  }
+  
+  .difficulty-icon {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .difficulty-levels {
+    gap: 6px;
+  }
+  
+  .difficulty-chip {
+    padding: 5px 12px;
+    font-size: 0.7rem;
+    min-height: 28px;
+    min-width: 80px;
+    gap: 5px;
+    border-radius: 14px;
+  }
+  
+  .difficulty-icon {
+    font-size: 0.85rem;
+  }
+}
+
+/* Very small screens - compact but centered */
+@media (max-width: 360px) {
+  .difficulty-levels {
+    gap: 4px;
+  }
+  
+  .difficulty-chip {
+    padding: 4px 10px;
+    font-size: 0.65rem;
+    min-height: 26px;
+    min-width: 70px;
+    gap: 4px;
+  }
+  
+  .difficulty-icon {
+    font-size: 0.8rem;
+  }
+}

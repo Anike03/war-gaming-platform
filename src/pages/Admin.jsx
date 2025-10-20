@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAdmin, useAuth } from '../hooks';
-import { Crown, Users, Gift, BarChart3, Shield, Ban, Trash2, Plus, Minus, Check, X, RefreshCw, Search, Download, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Crown, Users, Gift, BarChart3, Shield, Ban, Trash2, Plus, Minus, Check, X, RefreshCw, Search, Download, AlertCircle, CheckCircle, Clock, RotateCcw } from 'lucide-react';
 import '../styles/admin.css';
 
 const Admin = () => {
@@ -27,6 +27,15 @@ const Admin = () => {
   const [adjustmentReason, setAdjustmentReason] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Redemption modal state
+  const [selectedRedemption, setSelectedRedemption] = useState(null);
+  const [redemptionActionData, setRedemptionActionData] = useState({
+    giftCardCode: '',
+    returnPoints: true,
+    reason: '',
+    actionType: 'approve'
+  });
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
@@ -63,18 +72,44 @@ const Admin = () => {
     }
   };
 
-  const handleRedemptionAction = async (redemptionId, status, giftCardCode = null) => {
+  // Fixed redemption action handler
+  const handleRedemptionAction = (redemption, actionType) => {
+    console.log('Opening redemption modal for:', redemption.id, 'action:', actionType);
+    setSelectedRedemption(redemption);
+    setRedemptionActionData({
+      giftCardCode: actionType === 'approve' ? (redemption.giftCardCode || '') : '',
+      returnPoints: true,
+      reason: redemption.statusReason || '',
+      actionType: actionType
+    });
+  };
+
+  // Fixed redemption confirmation
+  const confirmRedemptionAction = async () => {
+    if (!selectedRedemption) return;
+
     try {
-      if (status === 'approved' && !giftCardCode) {
-        const code = prompt('Enter gift card code:');
-        if (!code) return;
-        giftCardCode = code;
-      }
+      const status = redemptionActionData.actionType === 'approve' ? 'approved' : 'rejected';
       
-      await updateRedemptionStatus(redemptionId, status, giftCardCode);
+      await updateRedemptionStatus(
+        selectedRedemption.id, 
+        status, 
+        redemptionActionData.actionType === 'approve' ? redemptionActionData.giftCardCode : null, 
+        redemptionActionData.returnPoints, 
+        redemptionActionData.reason
+      );
+      
+      // Close modal
+      setSelectedRedemption(null);
+      setRedemptionActionData({
+        giftCardCode: '',
+        returnPoints: true,
+        reason: '',
+        actionType: 'approve'
+      });
     } catch (error) {
       console.error('Error updating redemption:', error);
-      alert('Error updating redemption: ' + error.message);
+      alert(`Error: ${error.message}`);
     }
   };
 
@@ -556,6 +591,22 @@ const Admin = () => {
                         {getStatusIcon(redemption.status)}
                         <span>{redemption.status}</span>
                       </div>
+                      {redemption.statusReason && (
+                        <div className="text-xs text-muted mt-1 max-w-xs">
+                          {redemption.statusReason}
+                        </div>
+                      )}
+                      {redemption.status === 'rejected' && redemption.pointsReturned && (
+                        <div className="flex items-center gap-1 text-success text-xs mt-1">
+                          <RotateCcw size={10} />
+                          Points Returned
+                        </div>
+                      )}
+                      {redemption.status === 'rejected' && !redemption.pointsReturned && (
+                        <div className="text-xs text-muted mt-1">
+                          Points Not Returned
+                        </div>
+                      )}
                     </td>
                     <td>
                       <div className="date-cell">
@@ -567,7 +618,11 @@ const Admin = () => {
                         <div className="action-buttons">
                           <button
                             className="btn-success btn-sm"
-                            onClick={() => handleRedemptionAction(redemption.id, 'approved')}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleRedemptionAction(redemption, 'approve');
+                            }}
                             title="Approve Redemption"
                           >
                             <Check size={14} />
@@ -575,7 +630,11 @@ const Admin = () => {
                           </button>
                           <button
                             className="btn-danger btn-sm"
-                            onClick={() => handleRedemptionAction(redemption.id, 'rejected')}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleRedemptionAction(redemption, 'reject');
+                            }}
                             title="Reject Redemption"
                           >
                             <X size={14} />
@@ -587,6 +646,18 @@ const Admin = () => {
                         <div className="gift-card-code">
                           <code>{redemption.giftCardCode}</code>
                         </div>
+                      )}
+                      {(redemption.status === 'approved' || redemption.status === 'rejected') && (
+                        <button
+                          className="btn-secondary btn-sm mt-1"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleRedemptionAction(redemption, redemption.status === 'approved' ? 'approve' : 'reject');
+                          }}
+                        >
+                          Update
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -602,6 +673,170 @@ const Admin = () => {
               </div>
             )}
           </div>
+
+          {/* Redemption Action Modal */}
+          {selectedRedemption && (
+            <div className="modal-overlay">
+              <div className="modal">
+                <div className="modal-header">
+                  <h3>
+                    {redemptionActionData.actionType === 'approve' ? 'Approve Redemption' : 'Reject Redemption'}
+                  </h3>
+                  <button 
+                    className="modal-close"
+                    onClick={() => {
+                      setSelectedRedemption(null);
+                      setRedemptionActionData({
+                        giftCardCode: '',
+                        returnPoints: true,
+                        reason: '',
+                        actionType: 'approve'
+                      });
+                    }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className="modal-content">
+                  <div className="user-info-modal">
+                    <div className="user-avatar large">
+                      <Gift size={24} />
+                    </div>
+                    <div>
+                      <div className="user-name">{selectedRedemption.userName || selectedRedemption.user?.displayName}</div>
+                      <div className="user-email">{selectedRedemption.userEmail}</div>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Redemption Details</label>
+                    <div className="current-points">
+                      {selectedRedemption.vendor} ${selectedRedemption.value} Gift Card
+                      <br />
+                      {selectedRedemption.points} points
+                    </div>
+                  </div>
+
+                  {/* Action Type Selection */}
+                  {selectedRedemption.status === 'pending' && (
+                    <div className="form-group">
+                      <label className="form-label">Action Type</label>
+                      <div className="flex gap-2">
+                        <button
+                          className={`flex-1 py-2 px-3 rounded text-sm font-medium ${
+                            redemptionActionData.actionType === 'approve' 
+                              ? 'bg-green-500 text-white' 
+                              : 'bg-gray-200 text-gray-700'
+                          }`}
+                          onClick={() => setRedemptionActionData(prev => ({ 
+                            ...prev, 
+                            actionType: 'approve',
+                            giftCardCode: selectedRedemption.giftCardCode || ''
+                          }))}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          className={`flex-1 py-2 px-3 rounded text-sm font-medium ${
+                            redemptionActionData.actionType === 'reject' 
+                              ? 'bg-red-500 text-white' 
+                              : 'bg-gray-200 text-gray-700'
+                          }`}
+                          onClick={() => setRedemptionActionData(prev => ({ 
+                            ...prev, 
+                            actionType: 'reject',
+                            giftCardCode: ''
+                          }))}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Gift Card Code Input */}
+                  {redemptionActionData.actionType === 'approve' && (
+                    <div className="form-group">
+                      <label className="form-label">Gift Card Code *</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={redemptionActionData.giftCardCode}
+                        onChange={(e) => setRedemptionActionData(prev => ({ ...prev, giftCardCode: e.target.value }))}
+                        placeholder="Enter gift card code"
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {/* Return Points Option */}
+                  {redemptionActionData.actionType === 'reject' && (
+                    <div className="form-group">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id="returnPoints"
+                          checked={redemptionActionData.returnPoints}
+                          onChange={(e) => setRedemptionActionData(prev => ({ ...prev, returnPoints: e.target.checked }))}
+                          className="w-4 h-4"
+                        />
+                        <label htmlFor="returnPoints" className="form-label">
+                          Return {selectedRedemption.points} points to user
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Admin Notes */}
+                  <div className="form-group">
+                    <label className="form-label">
+                      {redemptionActionData.actionType === 'approve' ? 'Approval Notes' : 'Rejection Reason'} *
+                    </label>
+                    <textarea
+                      className="form-textarea"
+                      value={redemptionActionData.reason}
+                      onChange={(e) => setRedemptionActionData(prev => ({ ...prev, reason: e.target.value }))}
+                      placeholder={
+                        redemptionActionData.actionType === 'approve' 
+                          ? 'Add notes for approval...' 
+                          : 'Explain why this redemption was rejected...'
+                      }
+                      rows={3}
+                      required
+                    />
+                  </div>
+
+                  <div className="modal-actions">
+                    <button
+                      className="btn-primary"
+                      onClick={confirmRedemptionAction}
+                      disabled={
+                        !redemptionActionData.reason.trim() || 
+                        (redemptionActionData.actionType === 'approve' && !redemptionActionData.giftCardCode.trim())
+                      }
+                    >
+                      Confirm {redemptionActionData.actionType === 'approve' ? 'Approve' : 'Reject'}
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => {
+                        setSelectedRedemption(null);
+                        setRedemptionActionData({
+                          giftCardCode: '',
+                          returnPoints: true,
+                          reason: '',
+                          actionType: 'approve'
+                        });
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
