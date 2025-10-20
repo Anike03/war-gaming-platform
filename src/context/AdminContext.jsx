@@ -1,4 +1,4 @@
-// AdminContext.jsx
+// src/context/AdminContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { db } from '../utils/firebase';
@@ -15,7 +15,7 @@ import {
   getDoc 
 } from 'firebase/firestore';
 
-export const AdminContext = createContext(); // Added export
+export const AdminContext = createContext();
 
 export function useAdmin() {
   return useContext(AdminContext);
@@ -38,6 +38,31 @@ export function AdminProvider({ children }) {
     10000: 10,
     20000: 20,
     30000: 30
+  };
+
+  // Function to send email notification (mock implementation - integrate with your email service)
+  const sendRedemptionNotification = async (redemption, status, giftCardCode = null, reason = '') => {
+    // This is a mock implementation. Replace with your actual email service
+    console.log(`Sending ${status} notification to ${redemption.userEmail}`, {
+      userName: redemption.userName,
+      vendor: redemption.vendor,
+      value: redemption.value,
+      status,
+      giftCardCode,
+      reason
+    });
+    
+    // Example integration with email service:
+    // await fetch('/api/send-email', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({
+    //     to: redemption.userEmail,
+    //     subject: `Redemption ${status} - ${redemption.vendor} $${redemption.value} Gift Card`,
+    //     template: 'redemption-status',
+    //     data: { redemption, status, giftCardCode, reason }
+    //   })
+    // });
   };
 
   const getAllUsers = async () => {
@@ -192,21 +217,36 @@ export function AdminProvider({ children }) {
     }
   };
 
-  const updateRedemptionStatus = async (redemptionId, status, giftCardCode = null) => {
+  const updateRedemptionStatus = async (redemptionId, status, giftCardCode = null, returnPoints = false, reason = '') => {
     if (!isAdmin) return;
     
     try {
       const redemptionRef = doc(db, 'redemptions', redemptionId);
+      const redemption = redemptions.find(r => r.id === redemptionId);
+      
+      if (!redemption) throw new Error("Redemption not found");
+      
       const updates = { 
         status, 
-        processedAt: status === 'approved' ? new Date() : null 
+        statusReason: reason,
+        updatedAt: new Date()
       };
       
-      if (giftCardCode) {
+      if (status === 'approved' && giftCardCode) {
         updates.giftCardCode = giftCardCode;
+        updates.processedAt = new Date();
+      }
+      
+      if (status === 'rejected' && returnPoints) {
+        // Return points to user
+        await adjustUserPoints(redemption.userId, redemption.points, `Points returned for rejected redemption: ${reason}`);
+        updates.pointsReturned = true;
       }
       
       await updateDoc(redemptionRef, updates);
+      
+      // Send email notification
+      await sendRedemptionNotification(redemption, status, giftCardCode, reason);
       
       // Update local state
       setRedemptions(prev => prev.map(r => 

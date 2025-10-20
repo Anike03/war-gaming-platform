@@ -1,10 +1,21 @@
-// RedemptionContext.jsx
+// src/context/RedemptionContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { db } from '../utils/firebase';
-import { collection, addDoc, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { 
+  collection, 
+  addDoc, 
+  query, 
+  where, 
+  orderBy, 
+  getDocs,
+  updateDoc,
+  doc,
+  serverTimestamp,
+  onSnapshot
+} from 'firebase/firestore';
 
-export const RedemptionContext = createContext(); // Added export
+export const RedemptionContext = createContext();
 
 export function useRedemption() {
   return useContext(RedemptionContext);
@@ -13,7 +24,7 @@ export function useRedemption() {
 export function RedemptionProvider({ children }) {
   const [redemptionHistory, setRedemptionHistory] = useState([]);
   const [loading, setLoading] = useState(false);
-  const { currentUser, userData, deductPoints } = useAuth();
+  const { currentUser, userData, deductPoints, addPoints } = useAuth();
 
   // Gift card options
   const GIFT_CARD_OPTIONS = [
@@ -25,13 +36,22 @@ export function RedemptionProvider({ children }) {
     { points: 30000, value: 30, vendor: 'Tim Hortons' }
   ];
 
-  const requestRedemption = async (points, value, vendor) => {
+  const requestRedemption = async (points, value, vendor, userEmail, userName) => {
     if (!currentUser || !userData) {
       throw new Error("You must be logged in to redeem points");
     }
     
     if (userData.points < points) {
       throw new Error("Insufficient points for this redemption");
+    }
+    
+    // Validate form data
+    if (!userName.trim()) {
+      throw new Error("Please enter your full name");
+    }
+    
+    if (!userEmail.trim() || !/\S+@\S+\.\S+/.test(userEmail)) {
+      throw new Error("Please enter a valid email address");
     }
     
     setLoading(true);
@@ -43,21 +63,32 @@ export function RedemptionProvider({ children }) {
       const redemptionsRef = collection(db, 'redemptions');
       const docRef = await addDoc(redemptionsRef, {
         userId: currentUser.uid,
+        userName: userName.trim(),
+        userEmail: userEmail.trim(),
         points,
         value,
         vendor,
         status: 'pending',
-        createdAt: new Date()
+        statusReason: '',
+        giftCardCode: '',
+        pointsReturned: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
       
-      // Update local state
+      // Update local state with proper date format
       const newRedemption = {
         id: docRef.id,
         userId: currentUser.uid,
+        userName: userName.trim(),
+        userEmail: userEmail.trim(),
         points,
         value,
         vendor,
         status: 'pending',
+        statusReason: '',
+        giftCardCode: '',
+        pointsReturned: false,
         createdAt: new Date()
       };
       
@@ -88,7 +119,13 @@ export function RedemptionProvider({ children }) {
       const history = [];
       
       querySnapshot.forEach((doc) => {
-        history.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        history.push({ 
+          id: doc.id, 
+          ...data,
+          createdAt: data.createdAt?.toDate?.() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
+        });
       });
       
       setRedemptionHistory(history);
@@ -101,16 +138,43 @@ export function RedemptionProvider({ children }) {
     }
   };
 
+  // Real-time listener for redemption status updates
   useEffect(() => {
-    if (currentUser) {
-      getRedemptionHistory();
-    }
+    if (!currentUser) return;
+
+    const redemptionsRef = collection(db, 'redemptions');
+    const q = query(
+      redemptionsRef, 
+      where('userId', '==', currentUser.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const history = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        history.push({ 
+          id: doc.id, 
+          ...data,
+          createdAt: data.createdAt?.toDate?.() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
+        });
+      });
+      setRedemptionHistory(history);
+    }, (error) => {
+      console.error('Error in redemption real-time listener:', error);
+    });
+
+    return () => unsubscribe();
   }, [currentUser]);
 
   const value = {
+    // Data
     redemptionHistory,
     loading,
     GIFT_CARD_OPTIONS,
+    
+    // Actions
     requestRedemption,
     getRedemptionHistory
   };

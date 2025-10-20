@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAdmin, useAuth } from '../hooks';
-import { Crown, Users, Gift, BarChart3, Shield, Ban, Trash2, Plus, Minus, Check, X } from 'lucide-react';
+import { Crown, Users, Gift, BarChart3, Shield, Ban, Trash2, Plus, Minus, Check, X, RefreshCw, Search, Download, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import '../styles/admin.css';
 
 const Admin = () => {
   const { userData } = useAuth();
@@ -24,6 +25,8 @@ const Admin = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [pointsAdjustment, setPointsAdjustment] = useState(0);
   const [adjustmentReason, setAdjustmentReason] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
@@ -31,6 +34,17 @@ const Admin = () => {
     { id: 'redemptions', label: 'Redemptions', icon: Gift },
     { id: 'moderation', label: 'Moderation', icon: Shield }
   ];
+
+  // Filter users based on search term
+  const filteredUsers = users.filter(user =>
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.displayName?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Filter redemptions based on status
+  const filteredRedemptions = redemptions.filter(redemption =>
+    statusFilter === 'all' || redemption.status === statusFilter
+  );
 
   const handlePointsAdjustment = async (userId, points) => {
     if (!adjustmentReason.trim()) {
@@ -45,14 +59,22 @@ const Admin = () => {
       setSelectedUser(null);
     } catch (error) {
       console.error('Error adjusting points:', error);
+      alert('Error adjusting points: ' + error.message);
     }
   };
 
   const handleRedemptionAction = async (redemptionId, status, giftCardCode = null) => {
     try {
+      if (status === 'approved' && !giftCardCode) {
+        const code = prompt('Enter gift card code:');
+        if (!code) return;
+        giftCardCode = code;
+      }
+      
       await updateRedemptionStatus(redemptionId, status, giftCardCode);
     } catch (error) {
       console.error('Error updating redemption:', error);
+      alert('Error updating redemption: ' + error.message);
     }
   };
 
@@ -62,104 +84,199 @@ const Admin = () => {
     getStats();
   };
 
+  const exportUsers = () => {
+    const headers = ['ID', 'Email', 'Display Name', 'Points', 'Status', 'Created At'];
+    const csvContent = [
+      headers.join(','),
+      ...users.map(user => [
+        user.id,
+        `"${user.email}"`,
+        user.displayName ? `"${user.displayName}"` : '',
+        user.points || 0,
+        user.status || 'active',
+        user.createdAt ? new Date(user.createdAt.toDate()).toISOString() : ''
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'admin_users_export.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'approved': return <CheckCircle size={16} className="text-success" />;
+      case 'pending': return <Clock size={16} className="text-warning" />;
+      case 'rejected': return <AlertCircle size={16} className="text-danger" />;
+      default: return <Clock size={16} className="text-muted" />;
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'approved': return 'status-approved';
+      case 'pending': return 'status-pending';
+      case 'rejected': return 'status-rejected';
+      default: return 'status-pending';
+    }
+  };
+
+  const getUserStatusBadge = (status) => {
+    switch (status) {
+      case 'banned': return 'user-status-banned';
+      case 'active': return 'user-status-active';
+      default: return 'user-status-active';
+    }
+  };
+
+  if (!userData?.isAdmin) {
+    return (
+      <div className="admin-container">
+        <div className="access-denied">
+          <Shield size={64} className="access-denied-icon" />
+          <h2>Access Denied</h2>
+          <p>You don't have permission to access the admin dashboard.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="flex items-center gap-3">
-          <Crown className="text-warning" size={32} />
-          Admin Dashboard
-        </h1>
-        <button onClick={refreshData} className="btn btn-secondary" disabled={loading}>
-          Refresh Data
+    <div className="admin-container">
+      {/* Header */}
+      <div className="admin-header">
+        <div className="admin-title-section">
+          <div className="admin-title">
+            <Crown size={32} className="admin-crown" />
+            <h1>Admin Dashboard</h1>
+          </div>
+          <p className="admin-subtitle">Manage users, redemptions, and platform analytics</p>
+        </div>
+        <button 
+          onClick={refreshData} 
+          className="refresh-btn"
+          disabled={loading}
+        >
+          <RefreshCw size={18} className={loading ? 'spinning' : ''} />
+          {loading ? 'Refreshing...' : 'Refresh Data'}
         </button>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="card mb-6">
-        <div className="flex space-x-1">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-primary text-white'
-                    : 'text-muted hover:text-primary'
-                }`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                <Icon size={18} />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+      <div className="admin-tabs">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              className={`admin-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <Icon size={20} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Overview Tab */}
       {activeTab === 'overview' && (
-        <div>
-          <div className="grid grid-4 gap-6 mb-6">
-            <div className="card text-center">
-              <div className="text-3xl font-bold text-primary">{stats.totalUsers}</div>
-              <div className="text-muted">Total Users</div>
+        <div className="admin-content">
+          {/* Stats Cards */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-icon users">
+                <Users size={24} />
+              </div>
+              <div className="stat-content">
+                <div className="stat-number">{stats.totalUsers || 0}</div>
+                <div className="stat-label">Total Users</div>
+              </div>
             </div>
-            <div className="card text-center">
-              <div className="text-3xl font-bold text-warning">{stats.totalPoints}</div>
-              <div className="text-muted">Total Points</div>
+
+            <div className="stat-card">
+              <div className="stat-icon points">
+                <Gift size={24} />
+              </div>
+              <div className="stat-content">
+                <div className="stat-number">{stats.totalPoints || 0}</div>
+                <div className="stat-label">Total Points</div>
+              </div>
             </div>
-            <div className="card text-center">
-              <div className="text-3xl font-bold text-success">{stats.totalRedemptions}</div>
-              <div className="text-muted">Total Redemptions</div>
+
+            <div className="stat-card">
+              <div className="stat-icon redemptions">
+                <BarChart3 size={24} />
+              </div>
+              <div className="stat-content">
+                <div className="stat-number">{stats.totalRedemptions || 0}</div>
+                <div className="stat-label">Total Redemptions</div>
+              </div>
             </div>
-            <div className="card text-center">
-              <div className="text-3xl font-bold text-accent">{stats.pendingRedemptions}</div>
-              <div className="text-muted">Pending Redemptions</div>
+
+            <div className="stat-card">
+              <div className="stat-icon pending">
+                <Clock size={24} />
+              </div>
+              <div className="stat-content">
+                <div className="stat-number">{stats.pendingRedemptions || 0}</div>
+                <div className="stat-label">Pending Requests</div>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-2 gap-6">
-            <div className="card">
-              <h3 className="mb-4">Recent Users</h3>
-              <div className="space-y-3">
+          {/* Recent Activity */}
+          <div className="activity-grid">
+            <div className="activity-card">
+              <div className="activity-header">
+                <h3>Recent Users</h3>
+                <span className="activity-count">{users.length} total</span>
+              </div>
+              <div className="activity-list">
                 {users.slice(0, 5).map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-3 bg-card rounded">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                        <Users size={16} className="text-white" />
-                      </div>
-                      <div>
-                        <div className="font-semibold">{user.displayName || user.email}</div>
-                        <div className="text-sm text-muted">{user.points} points</div>
-                      </div>
+                  <div key={user.id} className="activity-item">
+                    <div className="user-avatar">
+                      <Users size={16} />
                     </div>
-                    <span className={`badge ${user.status === 'banned' ? 'badge-danger' : 'badge-success'}`}>
+                    <div className="activity-info">
+                      <div className="activity-title">{user.displayName || user.email}</div>
+                      <div className="activity-meta">{user.points || 0} points</div>
+                    </div>
+                    <div className={`user-status ${getUserStatusBadge(user.status)}`}>
                       {user.status || 'active'}
-                    </span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="card">
-              <h3 className="mb-4">Pending Redemptions</h3>
-              <div className="space-y-3">
+            <div className="activity-card">
+              <div className="activity-header">
+                <h3>Pending Redemptions</h3>
+                <span className="activity-count">
+                  {redemptions.filter(r => r.status === 'pending').length} pending
+                </span>
+              </div>
+              <div className="activity-list">
                 {redemptions
                   .filter(r => r.status === 'pending')
                   .slice(0, 5)
                   .map((redemption) => (
-                    <div key={redemption.id} className="p-3 bg-card rounded">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold">{redemption.user?.displayName}</span>
-                        <span className="text-warning flex items-center gap-1">
-                          <Gift size={14} />
-                          {redemption.points} points
-                        </span>
+                    <div key={redemption.id} className="activity-item">
+                      <div className="user-avatar gift">
+                        <Gift size={16} />
                       </div>
-                      <div className="text-sm text-muted">
-                        {redemption.vendor} ${redemption.value} gift card
+                      <div className="activity-info">
+                        <div className="activity-title">{redemption.user?.displayName || 'Unknown User'}</div>
+                        <div className="activity-meta">
+                          {redemption.vendor} • ${redemption.value} • {redemption.points} points
+                        </div>
                       </div>
+                      <div className="status-pending">Pending</div>
                     </div>
                   ))}
               </div>
@@ -170,11 +287,29 @@ const Admin = () => {
 
       {/* User Management Tab */}
       {activeTab === 'users' && (
-        <div className="card">
-          <h3 className="mb-4">User Management</h3>
-          
-          <div className="overflow-x-auto">
-            <table className="table">
+        <div className="admin-content">
+          <div className="section-header">
+            <h2>User Management</h2>
+            <div className="header-actions">
+              <div className="search-box">
+                <Search size={18} />
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+              <button onClick={exportUsers} className="export-btn">
+                <Download size={18} />
+                Export Users
+              </button>
+            </div>
+          </div>
+
+          <div className="table-container">
+            <table className="admin-table">
               <thead>
                 <tr>
                   <th>User</th>
@@ -186,58 +321,74 @@ const Admin = () => {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <tr key={user.id}>
                     <td>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                          <Users size={14} className="text-white" />
+                      <div className="user-cell">
+                        <div className="user-avatar">
+                          <Users size={16} />
                         </div>
-                        {user.displayName || 'Anonymous'}
+                        <div className="user-info">
+                          <div className="user-name">{user.displayName || 'Anonymous'}</div>
+                          <div className="user-id">ID: {user.id.substring(0, 8)}...</div>
+                        </div>
                       </div>
                     </td>
-                    <td>{user.email}</td>
                     <td>
-                      <span className="font-bold">{user.points || 0}</span>
+                      <div className="user-email">{user.email}</div>
                     </td>
                     <td>
-                      <span className={`badge ${user.status === 'banned' ? 'badge-danger' : 'badge-success'}`}>
+                      <div className="points-cell">
+                        <span className="points-value">{user.points || 0}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`user-status-badge ${getUserStatusBadge(user.status)}`}>
                         {user.status || 'active'}
                       </span>
                     </td>
                     <td>
-                      {user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : 'N/A'}
+                      <div className="date-cell">
+                        {user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : 'N/A'}
+                      </div>
                     </td>
                     <td>
-                      <div className="flex gap-2">
+                      <div className="action-buttons">
                         <button
-                          className="btn btn-sm btn-secondary"
+                          className="btn-secondary btn-sm"
                           onClick={() => setSelectedUser(user)}
+                          title="Adjust Points"
                         >
-                          Adjust Points
+                          <Plus size={14} />
+                          Adjust
                         </button>
                         {user.status === 'banned' ? (
                           <button
-                            className="btn btn-sm btn-success"
+                            className="btn-success btn-sm"
                             onClick={() => unbanUser(user.id)}
+                            title="Unban User"
                           >
+                            <Check size={14} />
                             Unban
                           </button>
                         ) : (
                           <button
-                            className="btn btn-sm btn-danger"
+                            className="btn-danger btn-sm"
                             onClick={() => banUser(user.id, 'Violation of terms')}
+                            title="Ban User"
                           >
                             <Ban size={14} />
+                            Ban
                           </button>
                         )}
                         <button
-                          className="btn btn-sm btn-danger"
+                          className="btn-danger btn-sm"
                           onClick={() => {
-                            if (window.confirm('Are you sure you want to delete this user?')) {
+                            if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
                               deleteUser(user.id);
                             }
                           }}
+                          title="Delete User"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -247,17 +398,48 @@ const Admin = () => {
                 ))}
               </tbody>
             </table>
+
+            {filteredUsers.length === 0 && (
+              <div className="empty-state">
+                <Users size={48} className="empty-icon" />
+                <h3>No Users Found</h3>
+                <p>No users match your search criteria.</p>
+              </div>
+            )}
           </div>
 
           {/* Points Adjustment Modal */}
           {selectedUser && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-card p-6 rounded-lg max-w-md w-full mx-4">
-                <h3 className="mb-4">Adjust Points for {selectedUser.displayName || selectedUser.email}</h3>
+            <div className="modal-overlay">
+              <div className="modal">
+                <div className="modal-header">
+                  <h3>Adjust Points</h3>
+                  <button 
+                    className="modal-close"
+                    onClick={() => setSelectedUser(null)}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
                 
-                <div className="space-y-4">
-                  <div>
-                    <label className="form-label">Current Points: {selectedUser.points || 0}</label>
+                <div className="modal-content">
+                  <div className="user-info-modal">
+                    <div className="user-avatar large">
+                      <Users size={24} />
+                    </div>
+                    <div>
+                      <div className="user-name">{selectedUser.displayName || 'Anonymous'}</div>
+                      <div className="user-email">{selectedUser.email}</div>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Current Points</label>
+                    <div className="current-points">{selectedUser.points || 0}</div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Points Adjustment</label>
                     <input
                       type="number"
                       className="form-input"
@@ -265,28 +447,42 @@ const Admin = () => {
                       onChange={(e) => setPointsAdjustment(parseInt(e.target.value) || 0)}
                       placeholder="Enter points to add/subtract"
                     />
+                    <div className="form-hint">
+                      Use negative numbers to subtract points
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="form-label">Reason</label>
+                  <div className="form-group">
+                    <label className="form-label">Reason for Adjustment *</label>
                     <input
                       type="text"
                       className="form-input"
                       value={adjustmentReason}
                       onChange={(e) => setAdjustmentReason(e.target.value)}
-                      placeholder="Reason for adjustment"
+                      placeholder="Please provide a reason for this adjustment"
+                      required
                     />
                   </div>
 
-                  <div className="flex gap-3">
+                  {pointsAdjustment !== 0 && (
+                    <div className="points-preview">
+                      <div className="preview-label">New Points Balance:</div>
+                      <div className="preview-value">
+                        {(selectedUser.points || 0) + pointsAdjustment}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="modal-actions">
                     <button
-                      className="btn btn-primary flex-1"
+                      className="btn-primary"
                       onClick={() => handlePointsAdjustment(selectedUser.id, pointsAdjustment)}
+                      disabled={!adjustmentReason.trim()}
                     >
                       Apply Adjustment
                     </button>
                     <button
-                      className="btn btn-secondary flex-1"
+                      className="btn-secondary"
                       onClick={() => setSelectedUser(null)}
                     >
                       Cancel
@@ -301,16 +497,29 @@ const Admin = () => {
 
       {/* Redemptions Tab */}
       {activeTab === 'redemptions' && (
-        <div className="card">
-          <h3 className="mb-4">Redemption Management</h3>
-          
-          <div className="overflow-x-auto">
-            <table className="table">
+        <div className="admin-content">
+          <div className="section-header">
+            <h2>Redemption Management</h2>
+            <div className="header-actions">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="filter-select"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="table-container">
+            <table className="admin-table">
               <thead>
                 <tr>
                   <th>User</th>
-                  <th>Vendor</th>
-                  <th>Value</th>
+                  <th>Reward</th>
                   <th>Points</th>
                   <th>Status</th>
                   <th>Date</th>
@@ -318,48 +527,65 @@ const Admin = () => {
                 </tr>
               </thead>
               <tbody>
-                {redemptions.map((redemption) => (
+                {filteredRedemptions.map((redemption) => (
                   <tr key={redemption.id}>
-                    <td>{redemption.user?.displayName || redemption.user?.email}</td>
                     <td>
-                      <span className="badge badge-secondary">{redemption.vendor}</span>
-                    </td>
-                    <td>${redemption.value}</td>
-                    <td>{redemption.points}</td>
-                    <td>
-                      <span className={`badge ${
-                        redemption.status === 'approved' ? 'badge-success' :
-                        redemption.status === 'pending' ? 'badge-warning' :
-                        'badge-danger'
-                      }`}>
-                        {redemption.status}
-                      </span>
+                      <div className="user-cell">
+                        <div className="user-avatar">
+                          <Users size={16} />
+                        </div>
+                        <div className="user-info">
+                          <div className="user-name">{redemption.user?.displayName || 'Unknown User'}</div>
+                          <div className="user-email">{redemption.user?.email}</div>
+                        </div>
+                      </div>
                     </td>
                     <td>
-                      {redemption.createdAt ? new Date(redemption.createdAt.toDate()).toLocaleDateString() : 'N/A'}
+                      <div className="reward-info">
+                        <div className="reward-vendor">{redemption.vendor}</div>
+                        <div className="reward-value">${redemption.value}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="points-cell">
+                        <span className="points-value">{redemption.points}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className={`status-badge ${getStatusBadge(redemption.status)}`}>
+                        {getStatusIcon(redemption.status)}
+                        <span>{redemption.status}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="date-cell">
+                        {redemption.createdAt ? new Date(redemption.createdAt.toDate()).toLocaleDateString() : 'N/A'}
+                      </div>
                     </td>
                     <td>
                       {redemption.status === 'pending' && (
-                        <div className="flex gap-2">
+                        <div className="action-buttons">
                           <button
-                            className="btn btn-sm btn-success"
-                            onClick={() => {
-                              const code = prompt('Enter gift card code:');
-                              if (code) {
-                                handleRedemptionAction(redemption.id, 'approved', code);
-                              }
-                            }}
+                            className="btn-success btn-sm"
+                            onClick={() => handleRedemptionAction(redemption.id, 'approved')}
+                            title="Approve Redemption"
                           >
                             <Check size={14} />
                             Approve
                           </button>
                           <button
-                            className="btn btn-sm btn-danger"
+                            className="btn-danger btn-sm"
                             onClick={() => handleRedemptionAction(redemption.id, 'rejected')}
+                            title="Reject Redemption"
                           >
                             <X size={14} />
                             Reject
                           </button>
+                        </div>
+                      )}
+                      {redemption.status === 'approved' && redemption.giftCardCode && (
+                        <div className="gift-card-code">
+                          <code>{redemption.giftCardCode}</code>
                         </div>
                       )}
                     </td>
@@ -367,27 +593,60 @@ const Admin = () => {
                 ))}
               </tbody>
             </table>
+
+            {filteredRedemptions.length === 0 && (
+              <div className="empty-state">
+                <Gift size={48} className="empty-icon" />
+                <h3>No Redemptions Found</h3>
+                <p>No redemptions match your current filter.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Moderation Tab */}
       {activeTab === 'moderation' && (
-        <div className="card">
-          <h3 className="mb-4">Content Moderation</h3>
-          <p className="text-muted mb-6">Moderation tools and reports will appear here.</p>
-          
-          <div className="grid grid-2 gap-6">
-            <div className="text-center p-6 bg-card rounded-lg">
-              <Shield size={48} className="text-primary mx-auto mb-4" />
-              <h4>User Reports</h4>
-              <p className="text-muted">Manage user reports and violations</p>
+        <div className="admin-content">
+          <div className="section-header">
+            <h2>Content Moderation</h2>
+          </div>
+
+          <div className="moderation-grid">
+            <div className="moderation-card">
+              <div className="moderation-icon">
+                <Shield size={32} />
+              </div>
+              <h3>User Reports</h3>
+              <p>Manage user reports and handle violations of community guidelines.</p>
+              <button className="btn-secondary">View Reports</button>
             </div>
-            
-            <div className="text-center p-6 bg-card rounded-lg">
-              <Ban size={48} className="text-danger mx-auto mb-4" />
-              <h4>Banned Users</h4>
-              <p className="text-muted">View and manage banned users</p>
+
+            <div className="moderation-card">
+              <div className="moderation-icon">
+                <Ban size={32} />
+              </div>
+              <h3>Banned Users</h3>
+              <p>Review and manage currently banned users and their status.</p>
+              <button className="btn-secondary">Manage Bans</button>
+            </div>
+
+            <div className="moderation-card">
+              <div className="moderation-icon">
+                <AlertCircle size={32} />
+              </div>
+              <h3>Content Flags</h3>
+              <p>Monitor and review content that has been flagged by users.</p>
+              <button className="btn-secondary">Review Flags</button>
+            </div>
+
+            <div className="moderation-card">
+              <div className="moderation-icon">
+                <Users size={32} />
+              </div>
+              <h3>User Analytics</h3>
+              <p>View user behavior analytics and moderation statistics.</p>
+              <button className="btn-secondary">View Analytics</button>
             </div>
           </div>
         </div>

@@ -1,263 +1,430 @@
-import React, { useState } from 'react';
+// src/pages/Redeem.jsx
+import React, { useState, useEffect } from 'react';
 import { useRedemption, useAuth } from '../hooks';
-import { Gift, Coffee, Star, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Gift, Coffee, Star, CheckCircle, Clock, AlertCircle, Mail, User, RotateCcw, ChevronRight } from 'lucide-react';
+import '../styles/redeem.css';
+
+/** Safe date formatter */
+function formatMaybeDate(d) {
+  try {
+    if (!d) return 'N/A';
+    if (typeof d.toDate === 'function') return d.toDate().toLocaleDateString();
+    const dt = new Date(d);
+    return isNaN(dt.getTime()) ? 'N/A' : dt.toLocaleDateString();
+  } catch {
+    return 'N/A';
+  }
+}
 
 const Redeem = () => {
   const { userData } = useAuth();
-  const { redemptionHistory, GIFT_CARD_OPTIONS, requestRedemption, loading } = useRedemption();
+  const { redemptionHistory = [], GIFT_CARD_OPTIONS = [], requestRedemption, loading } = useRedemption();
   const [selectedOption, setSelectedOption] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [redemptionForm, setRedemptionForm] = useState({
+    userName: '',
+    userEmail: '',
+    confirmRedemption: false
+  });
+  const [activeTab, setActiveTab] = useState('rewards');
+  
+  const points = Number(userData?.points || 0);
+
+  // Auto-fill user data if available
+  useEffect(() => {
+    if (userData) {
+      setRedemptionForm(prev => ({
+        ...prev,
+        userName: userData.displayName || '',
+        userEmail: userData.email || ''
+      }));
+    }
+  }, [userData]);
+
+  const handleInputChange = (field, value) => {
+    setRedemptionForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const canRedeem = () => {
+    return selectedOption && 
+           points >= selectedOption.points && 
+           redemptionForm.userName.trim() && 
+           redemptionForm.userEmail.trim() && 
+           redemptionForm.confirmRedemption;
+  };
+
+  const handleRedeemNow = (option) => {
+    setSelectedOption(option);
+    setActiveTab('rewards');
+    setTimeout(() => {
+      document.getElementById('redemption-form')?.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 100);
+  };
 
   const handleRedeem = async () => {
-    if (!selectedOption) return;
-    
+    if (!canRedeem()) return;
+
     try {
       await requestRedemption(
         selectedOption.points,
         selectedOption.value,
-        selectedOption.vendor
+        selectedOption.vendor,
+        redemptionForm.userEmail,
+        redemptionForm.userName
       );
       setShowConfirmation(true);
       setSelectedOption(null);
+      setRedemptionForm({
+        userName: userData?.displayName || '',
+        userEmail: userData?.email || '',
+        confirmRedemption: false
+      });
+      setActiveTab('history');
+      
+      setTimeout(() => setShowConfirmation(false), 5000);
     } catch (error) {
       console.error('Redemption failed:', error);
+      alert(`Redemption failed: ${error.message}`);
     }
   };
 
   const getStatusIcon = (status) => {
-    switch (status) {
-      case 'approved':
-        return <CheckCircle className="text-success" size={20} />;
-      case 'pending':
-        return <Clock className="text-warning" size={20} />;
-      case 'rejected':
-        return <AlertCircle className="text-danger" size={20} />;
-      default:
-        return <Clock className="text-muted" size={20} />;
+    switch ((status || '').toLowerCase()) {
+      case 'approved': return <CheckCircle size={20} />;
+      case 'pending': return <Clock size={20} />;
+      case 'rejected': return <AlertCircle size={20} />;
+      default: return <Clock size={20} />;
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'approved':
-        return 'text-success';
-      case 'pending':
-        return 'text-warning';
-      case 'rejected':
-        return 'text-danger';
-      default:
-        return 'text-muted';
+  const getStatusBadge = (status) => {
+    switch ((status || '').toLowerCase()) {
+      case 'approved': return 'status-approved';
+      case 'pending': return 'status-pending';
+      case 'rejected': return 'status-rejected';
+      default: return 'status-pending';
     }
+  };
+
+  const getVendorIcon = (vendor) => {
+    const icons = {
+      'Starbucks': '☕',
+      'Tim Hortons': '🍩'
+    };
+    return icons[vendor] || '🎁';
   };
 
   return (
-    <div className="container">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="flex items-center gap-3">
-          <Gift className="text-accent" size={32} />
-          Redeem Points
-        </h1>
-        <div className="wallet-badge">
-          <Star size={20} />
-          <span>{userData?.points || 0} Points</span>
+    <div className="redeem-container">
+      {/* Header */}
+      <div className="redeem-header">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="redeem-title">Redeem Your Points</h1>
+            <p className="redeem-subtitle">Exchange your hard-earned points for amazing gift cards</p>
+          </div>
+          <div className="wallet-badge">
+            <Star size={24} />
+            <span>{points.toLocaleString()} Points</span>
+          </div>
         </div>
       </div>
 
+      {/* Navigation Tabs */}
+      <div className="navigation-tabs">
+        <button
+          className={`tab-button ${activeTab === 'rewards' ? 'active' : ''}`}
+          onClick={() => setActiveTab('rewards')}
+        >
+          <Gift size={18} />
+          Available Rewards
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('history')}
+        >
+          <Clock size={18} />
+          Redemption History
+          {redemptionHistory.length > 0 && (
+            <span className="tab-badge">
+              {redemptionHistory.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {showConfirmation && (
-        <div className="card bg-success/20 border-success mb-6">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="text-success" size={24} />
-            <div>
-              <h3 className="text-success">Redemption Request Submitted!</h3>
-              <p className="text-muted">Your request is being processed. You'll receive your gift card code within 24 hours.</p>
-            </div>
+        <div className="success-message">
+          <CheckCircle size={24} className="icon" />
+          <div className="success-content">
+            <h4>Redemption Request Submitted!</h4>
+            <p>Your request is being processed. You'll receive an email notification once it's approved.</p>
           </div>
         </div>
       )}
 
-      <div className="grid grid-2 gap-6">
-        {/* Gift Card Options */}
-        <div className="card">
-          <h2 className="mb-4">Available Rewards</h2>
-          <p className="text-muted mb-6">Exchange your points for gift cards</p>
-
-          <div className="space-y-4">
-            {GIFT_CARD_OPTIONS.map((option, index) => (
-              <div
-                key={index}
-                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  selectedOption === option
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border-color hover:border-primary/50'
-                }`}
-                onClick={() => setSelectedOption(option)}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
-                      <Coffee className="text-white" size={24} />
+      {/* Rewards Tab */}
+      {activeTab === 'rewards' && (
+        <div>
+          <div className="gift-cards-grid">
+            {GIFT_CARD_OPTIONS.map((option, idx) => {
+              const enough = points >= Number(option.points || 0);
+              
+              return (
+                <div
+                  key={`${option.vendor}-${option.value}-${idx}`}
+                  className="gift-card"
+                >
+                  <div className="gift-card-header">
+                    <div className="gift-card-icon">
+                      {getVendorIcon(option.vendor)}
                     </div>
-                    <div>
-                      <h4 className="font-semibold">{option.vendor}</h4>
-                      <p className="text-lg font-bold text-accent">${option.value}</p>
+                    <div className="gift-card-info">
+                      <h3>{option.vendor}</h3>
+                      <div className="gift-card-value">${Number(option.value || 0)}</div>
+                      <div className="gift-card-points">
+                        <Star size={16} fill="currentColor" />
+                        <span>{Number(option.points || 0).toLocaleString()} Points</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 text-warning">
-                      <Star size={16} fill="currentColor" />
-                      <span className="font-bold">{option.points.toLocaleString()}</span>
+
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`points-badge ${enough ? '' : 'insufficient'}`}>
+                      {enough ? 'You have enough points' : 'Insufficient points'}
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted">
-                    {userData?.points >= option.points ? (
-                      <span className="text-success">You have enough points</span>
-                    ) : (
-                      <span className="text-danger">
-                        Need {option.points - (userData?.points || 0)} more points
-                      </span>
-                    )}
-                  </span>
                   <button
-                    className={`btn btn-sm ${
-                      userData?.points >= option.points
-                        ? 'btn-primary'
-                        : 'btn-secondary opacity-50 cursor-not-allowed'
-                    }`}
-                    disabled={userData?.points < option.points || loading}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedOption(option);
-                    }}
+                    className="redeem-now-btn"
+                    onClick={() => handleRedeemNow(option)}
+                    disabled={!enough || loading}
                   >
-                    Select
+                    {enough ? 'Redeem Now' : 'Need More Points'}
+                    {enough && <ChevronRight size={16} />}
                   </button>
+
+                  {!enough && (
+                    <div className="insufficient-points">
+                      Need {Math.max(0, Number(option.points || 0) - points).toLocaleString()} more points
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </div>
 
-        {/* Redemption Summary */}
-        <div className="card">
-          <h2 className="mb-4">Redemption Summary</h2>
-
-          {!selectedOption ? (
-            <div className="text-center py-12">
-              <Gift className="text-muted mx-auto mb-4" size={48} />
-              <p className="text-muted">Select a gift card to continue</p>
-            </div>
-          ) : (
-            <div>
-              <div className="bg-gradient-to-r from-primary to-secondary p-6 rounded-lg text-white mb-6">
-                <div className="text-center">
-                  <Coffee className="mx-auto mb-3" size={32} />
-                  <h3 className="text-2xl font-bold mb-1">{selectedOption.vendor}</h3>
-                  <p className="text-3xl font-bold">${selectedOption.value}</p>
-                  <div className="flex items-center justify-center gap-2 mt-3">
-                    <Star size={20} fill="currentColor" />
-                    <span className="text-xl font-bold">{selectedOption.points.toLocaleString()} Points</span>
+          {/* Redemption Form */}
+          {selectedOption && (
+            <div id="redemption-form" className="redemption-form-container">
+              <div className="form-section">
+                <h3>Complete Your Redemption</h3>
+                
+                <div className="selected-reward-card">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="gift-card-icon">
+                        {getVendorIcon(selectedOption.vendor)}
+                      </div>
+                      <div>
+                        <div className="text-lg font-semibold text-gray-900">{selectedOption.vendor}</div>
+                        <div className="text-xl font-bold text-green-600">${selectedOption.value}</div>
+                      </div>
+                    </div>
+                    <div className="text-center sm:text-right">
+                      <div className="flex items-center gap-1 text-yellow-600 text-lg font-bold justify-center sm:justify-end">
+                        <Star size={20} fill="currentColor" />
+                        {selectedOption.points.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-gray-600">Points Required</div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span>Current Balance:</span>
-                  <span className="font-semibold">{userData?.points || 0} Points</span>
+                <div className="points-balance-grid">
+                  <div className="points-balance-card current">
+                    <div className="points-balance-label">Current Balance</div>
+                    <div className="points-balance-value">
+                      <Star size={16} fill="currentColor" />
+                      {points.toLocaleString()} Points
+                    </div>
+                  </div>
+                  <div className="points-balance-card future">
+                    <div className="points-balance-label">After Redemption</div>
+                    <div className="points-balance-value">
+                      <Star size={16} fill="currentColor" />
+                      {Math.max(0, points - selectedOption.points).toLocaleString()} Points
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex justify-between">
-                  <span>Points After Redemption:</span>
-                  <span className="font-semibold">
-                    {(userData?.points || 0) - selectedOption.points} Points
-                  </span>
+                <div className="form-group">
+                  <label className="form-label">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={redemptionForm.userName}
+                    onChange={(e) => handleInputChange('userName', e.target.value)}
+                    placeholder="Enter your full name as it should appear on the gift card"
+                  />
                 </div>
 
-                <div className="flex justify-between text-lg font-bold mt-4 pt-4 border-t border-border-color">
-                  <span>Total:</span>
-                  <span className="text-accent">${selectedOption.value} Gift Card</span>
+                <div className="form-group">
+                  <label className="form-label">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    value={redemptionForm.userEmail}
+                    onChange={(e) => handleInputChange('userEmail', e.target.value)}
+                    placeholder="Enter your email address for delivery"
+                  />
+                  <div className="text-sm text-gray-600 mt-1">
+                    We'll send the gift card code to this email address once approved
+                  </div>
+                </div>
+
+                <div className="confirmation-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={redemptionForm.confirmRedemption}
+                    onChange={(e) => handleInputChange('confirmRedemption', e.target.checked)}
+                    className="w-5 h-5 mt-0.5"
+                  />
+                  <label className="confirmation-text">
+                    I confirm that I want to redeem {selectedOption.points.toLocaleString()} points 
+                    for a ${selectedOption.value} {selectedOption.vendor} gift card. I understand that 
+                    this action is final and cannot be undone. The gift card code will be delivered 
+                    to my email within 24 hours of approval.
+                  </label>
                 </div>
 
                 <button
-                  className="btn btn-accent btn-lg btn-full mt-6"
+                  className="confirm-redemption-btn"
                   onClick={handleRedeem}
-                  disabled={loading}
+                  disabled={!canRedeem() || loading}
                 >
-                  {loading ? 'Processing...' : 'Confirm Redemption'}
+                  {loading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Processing...
+                    </div>
+                  ) : (
+                    `Confirm Redemption - ${selectedOption.points.toLocaleString()} Points`
+                  )}
                 </button>
-
-                <p className="text-sm text-muted text-center">
-                  Gift card codes are typically delivered within 24 hours of approval.
-                </p>
               </div>
             </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Redemption History */}
-      <div className="card mt-6">
-        <h2 className="mb-4">Redemption History</h2>
+      {/* History Tab */}
+      {activeTab === 'history' && (
+        <div className="history-section">
+          <h3 className="history-title">Your Redemption History</h3>
 
-        {redemptionHistory.length === 0 ? (
-          <div className="text-center py-8">
-            <Gift className="text-muted mx-auto mb-4" size={48} />
-            <p className="text-muted">No redemption history yet</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Vendor</th>
-                  <th>Value</th>
-                  <th>Points</th>
-                  <th>Status</th>
-                  <th>Code</th>
-                </tr>
-              </thead>
-              <tbody>
-                {redemptionHistory.map((redemption) => (
-                  <tr key={redemption.id}>
-                    <td>
-                      {new Date(redemption.createdAt?.toDate()).toLocaleDateString()}
-                    </td>
-                    <td>
-                      <span className="badge badge-secondary">{redemption.vendor}</span>
-                    </td>
-                    <td>${redemption.value}</td>
-                    <td>
-                      <div className="flex items-center gap-1 text-warning">
+          {redemptionHistory.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">🎁</div>
+              <h4>No Redemptions Yet</h4>
+              <p>Redeem your points for amazing gift cards and they'll appear here!</p>
+              <button
+                className="btn btn-primary mt-4"
+                onClick={() => setActiveTab('rewards')}
+              >
+                Browse Rewards
+              </button>
+            </div>
+          ) : (
+            <div className="history-list">
+              {redemptionHistory.map((redemption) => (
+                <div key={redemption.id} className="history-item">
+                  <div className="history-header">
+                    <div className="history-vendor-info">
+                      {getStatusIcon(redemption.status)}
+                      <div>
+                        <div className="history-vendor">{redemption.vendor}</div>
+                        <div className="history-value">${redemption.value}</div>
+                      </div>
+                    </div>
+                    <div className={`history-status ${getStatusBadge(redemption.status)}`}>
+                      {redemption.status?.toUpperCase() || 'PENDING'}
+                    </div>
+                  </div>
+
+                  <div className="history-details">
+                    <div className="history-detail">
+                      <div className="detail-label">Points Redeemed</div>
+                      <div className="detail-value points-value">
                         <Star size={14} fill="currentColor" />
-                        {redemption.points}
+                        {redemption.points.toLocaleString()}
                       </div>
-                    </td>
-                    <td>
-                      <div className={`flex items-center gap-2 ${getStatusColor(redemption.status)}`}>
-                        {getStatusIcon(redemption.status)}
-                        <span className="capitalize">{redemption.status}</span>
+                    </div>
+                    <div className="history-detail">
+                      <div className="detail-label">Date Requested</div>
+                      <div className="detail-value">{formatMaybeDate(redemption.createdAt)}</div>
+                    </div>
+                    <div className="history-detail">
+                      <div className="detail-label">Gift Card Value</div>
+                      <div className="detail-value">${redemption.value}</div>
+                    </div>
+                    {redemption.processedAt && (
+                      <div className="history-detail">
+                        <div className="detail-label">Processed On</div>
+                        <div className="detail-value">{formatMaybeDate(redemption.processedAt)}</div>
                       </div>
-                    </td>
-                    <td>
-                      {redemption.giftCardCode ? (
-                        <code className="bg-success/20 text-success px-2 py-1 rounded">
-                          {redemption.giftCardCode}
-                        </code>
-                      ) : (
-                        <span className="text-muted">Pending</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                    )}
+                  </div>
+
+                  {/* Admin Notes - Show for all statuses if available */}
+                  {redemption.statusReason && (
+                    <div className="admin-notes-section">
+                      <div className="admin-notes-label">Admin Note</div>
+                      <div className="admin-notes-content">{redemption.statusReason}</div>
+                    </div>
+                  )}
+
+                  {/* Gift Card Code (Approved only) */}
+                  {redemption.status === 'approved' && redemption.giftCardCode && (
+                    <div className="gift-card-code-section">
+                      <div className="gift-card-code-label">Gift Card Code</div>
+                      <div className="code-display">{redemption.giftCardCode}</div>
+                      <div className="code-instructions">
+                        This code has been sent to your email. Use it at {redemption.vendor} checkout.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Points Returned (Rejected with return) */}
+                  {redemption.status === 'rejected' && redemption.pointsReturned && (
+                    <div className="points-returned-section">
+                      <RotateCcw size={16} />
+                      <span>Points have been returned to your account</span>
+                    </div>
+                  )}
+
+                  {/* No Gift Card Available (Rejected without code) */}
+                  {redemption.status === 'rejected' && !redemption.giftCardCode && (
+                    <div className="no-gift-card">
+                      No gift card code available for this declined redemption.
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

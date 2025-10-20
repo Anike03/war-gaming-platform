@@ -144,8 +144,6 @@ main{ flex:1; }
 .btn-primary{ background: var(--primary); border-color: #154895; color: #fff; }
 .btn-primary:hover{ background: var(--primary-600); }
 
-.btn-secondary{ background: #1a2a40; border-color:#213854; color:#e8f2ff; }
-.btn-secondary:hover{ background:#213854; }
 
 .btn-accent{ background: var(--warning); border-color:#9a4b14; color:#0b0f14; }
 .btn-accent:hover{ background: var(--warning-700); color:#fff; }
