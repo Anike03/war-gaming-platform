@@ -29,7 +29,7 @@ export const useAuthActions = () => {
   const {
     login,
     signup,
-    loginAdminOnly,     // <-- make sure this exists in AuthContext (it does in the version I gave you)
+    loginAdminOnly,   
     googleSignIn,
     logout,
     resetPassword,

@@ -25,6 +25,7 @@ const Admin = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [pointsAdjustment, setPointsAdjustment] = useState(0);
   const [adjustmentReason, setAdjustmentReason] = useState('');
+  const [adjustmentType, setAdjustmentType] = useState('add'); // Add this state
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   
@@ -66,9 +67,22 @@ const Admin = () => {
       setPointsAdjustment(0);
       setAdjustmentReason('');
       setSelectedUser(null);
+      setAdjustmentType('add'); // Reset to default
     } catch (error) {
       console.error('Error adjusting points:', error);
       alert('Error adjusting points: ' + error.message);
+    }
+  };
+
+  // Quick points adjustment function
+  const quickAdjustPoints = async (userId, points, reason) => {
+    if (window.confirm(`Are you sure you want to ${points >= 0 ? 'add' : 'deduct'} ${Math.abs(points)} points?`)) {
+      try {
+        await adjustUserPoints(userId, points, reason);
+      } catch (error) {
+        console.error('Error adjusting points:', error);
+        alert('Error adjusting points: ' + error.message);
+      }
     }
   };
 
@@ -375,6 +389,9 @@ const Admin = () => {
                     <td>
                       <div className="points-cell">
                         <span className="points-value">{user.points || 0}</span>
+                        <div className="flex gap-1 ml-2">
+          
+                        </div>
                       </div>
                     </td>
                     <td>
@@ -391,7 +408,11 @@ const Admin = () => {
                       <div className="action-buttons">
                         <button
                           className="btn-secondary btn-sm"
-                          onClick={() => setSelectedUser(user)}
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setPointsAdjustment(0);
+                            setAdjustmentType('add');
+                          }}
                           title="Adjust Points"
                         >
                           <Plus size={14} />
@@ -451,7 +472,11 @@ const Admin = () => {
                   <h3>Adjust Points</h3>
                   <button 
                     className="modal-close"
-                    onClick={() => setSelectedUser(null)}
+                    onClick={() => {
+                      setSelectedUser(null);
+                      setPointsAdjustment(0);
+                      setAdjustmentType('add');
+                    }}
                   >
                     <X size={20} />
                   </button>
@@ -473,18 +498,39 @@ const Admin = () => {
                     <div className="current-points">{selectedUser.points || 0}</div>
                   </div>
 
+                  {/* Adjustment Type Toggle */}
                   <div className="form-group">
-                    <label className="form-label">Points Adjustment</label>
+                    <label className="form-label">Adjustment Type</label>
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        className={`btn flex-1 ${adjustmentType === 'add' ? 'btn-success' : 'btn-secondary'}`}
+                        onClick={() => setAdjustmentType('add')}
+                      >
+                        <Plus size={16} className="mr-1" />
+                        Add Points
+                      </button>
+                      <button
+                        className={`btn flex-1 ${adjustmentType === 'deduct' ? 'btn-danger' : 'btn-secondary'}`}
+                        onClick={() => setAdjustmentType('deduct')}
+                      >
+                        <Minus size={16} className="mr-1" />
+                        Deduct Points
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      Points to {adjustmentType === 'add' ? 'Add' : 'Deduct'}
+                    </label>
                     <input
                       type="number"
                       className="form-input"
                       value={pointsAdjustment}
-                      onChange={(e) => setPointsAdjustment(parseInt(e.target.value) || 0)}
-                      placeholder="Enter points to add/subtract"
+                      onChange={(e) => setPointsAdjustment(Math.max(0, parseInt(e.target.value) || 0))}
+                      placeholder={`Enter points to ${adjustmentType}`}
+                      min="0"
                     />
-                    <div className="form-hint">
-                      Use negative numbers to subtract points
-                    </div>
                   </div>
 
                   <div className="form-group">
@@ -503,22 +549,29 @@ const Admin = () => {
                     <div className="points-preview">
                       <div className="preview-label">New Points Balance:</div>
                       <div className="preview-value">
-                        {(selectedUser.points || 0) + pointsAdjustment}
+                        {selectedUser.points + (adjustmentType === 'deduct' ? -Math.abs(pointsAdjustment) : Math.abs(pointsAdjustment))}
                       </div>
                     </div>
                   )}
 
                   <div className="modal-actions">
                     <button
-                      className="btn-primary"
-                      onClick={() => handlePointsAdjustment(selectedUser.id, pointsAdjustment)}
-                      disabled={!adjustmentReason.trim()}
+                      className={`btn-primary ${adjustmentType === 'add' ? 'btn-success' : 'btn-danger'}`}
+                      onClick={() => {
+                        const actualPoints = adjustmentType === 'deduct' ? -Math.abs(pointsAdjustment) : Math.abs(pointsAdjustment);
+                        handlePointsAdjustment(selectedUser.id, actualPoints);
+                      }}
+                      disabled={!adjustmentReason.trim() || pointsAdjustment <= 0}
                     >
-                      Apply Adjustment
+                      {adjustmentType === 'add' ? 'Add' : 'Deduct'} {pointsAdjustment} Points
                     </button>
                     <button
                       className="btn-secondary"
-                      onClick={() => setSelectedUser(null)}
+                      onClick={() => {
+                        setSelectedUser(null);
+                        setPointsAdjustment(0);
+                        setAdjustmentType('add');
+                      }}
                     >
                       Cancel
                     </button>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAdmin } from '../../hooks';
-import { Users, Search, Download, Ban, CheckCircle, Trash2 } from 'lucide-react';
+import { Users, Search, Download, Ban, CheckCircle, Trash2, Plus, Minus } from 'lucide-react';
 
 const UserManagement = () => {
   const { users, loading, updateUser, adjustUserPoints, banUser, unbanUser, deleteUser } = useAdmin();
@@ -8,6 +8,7 @@ const UserManagement = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [pointsAdjustment, setPointsAdjustment] = useState(0);
   const [adjustmentReason, setAdjustmentReason] = useState('');
+  const [adjustmentType, setAdjustmentType] = useState('add'); // 'add' or 'deduct'
 
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -20,11 +21,15 @@ const UserManagement = () => {
       return;
     }
 
+    // Determine the actual points change based on type
+    const actualPoints = adjustmentType === 'deduct' ? -Math.abs(points) : Math.abs(points);
+
     try {
-      await adjustUserPoints(userId, points, adjustmentReason);
+      await adjustUserPoints(userId, actualPoints, adjustmentReason);
       setPointsAdjustment(0);
       setAdjustmentReason('');
       setSelectedUser(null);
+      setAdjustmentType('add'); // Reset to default
     } catch (error) {
       console.error('Error adjusting points:', error);
     }
@@ -51,6 +56,16 @@ const UserManagement = () => {
     link.download = 'war_users_export.csv';
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const quickAdjustPoints = async (userId, points, reason) => {
+    if (window.confirm(`Are you sure you want to ${points >= 0 ? 'add' : 'deduct'} ${Math.abs(points)} points?`)) {
+      try {
+        await adjustUserPoints(userId, points, reason);
+      } catch (error) {
+        console.error('Error adjusting points:', error);
+      }
+    }
   };
 
   return (
@@ -109,8 +124,24 @@ const UserManagement = () => {
                 </td>
                 <td>{user.email}</td>
                 <td>
-                  <div className="flex items-center gap-1 text-warning">
-                    <span className="font-bold">{user.points || 0}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-warning">{user.points || 0}</span>
+                    <div className="flex gap-1">
+                      <button
+                        className="btn btn-xs btn-success"
+                        onClick={() => quickAdjustPoints(user.id, 10, 'Quick points addition')}
+                        title="Add 10 points"
+                      >
+                        <Plus size={12} />
+                      </button>
+                      <button
+                        className="btn btn-xs btn-danger"
+                        onClick={() => quickAdjustPoints(user.id, -10, 'Quick points deduction')}
+                        title="Deduct 10 points"
+                      >
+                        <Minus size={12} />
+                      </button>
+                    </div>
                   </div>
                 </td>
                 <td>
@@ -125,7 +156,11 @@ const UserManagement = () => {
                   <div className="flex gap-2">
                     <button
                       className="btn btn-sm btn-secondary"
-                      onClick={() => setSelectedUser(user)}
+                      onClick={() => {
+                        setSelectedUser(user);
+                        setPointsAdjustment(0);
+                        setAdjustmentType('add');
+                      }}
                     >
                       Adjust Points
                     </button>
@@ -180,14 +215,48 @@ const UserManagement = () => {
             </h3>
             
             <div className="space-y-4">
+              <div className="bg-muted p-3 rounded">
+                <p className="text-sm font-medium">Current Points: <span className="text-warning font-bold">{selectedUser.points || 0}</span></p>
+                {pointsAdjustment !== 0 && (
+                  <p className="text-sm">
+                    New Total: <span className="font-bold">
+                      {selectedUser.points + (adjustmentType === 'deduct' ? -Math.abs(pointsAdjustment) : Math.abs(pointsAdjustment))}
+                    </span>
+                  </p>
+                )}
+              </div>
+
               <div>
-                <label className="form-label">Current Points: {selectedUser.points || 0}</label>
+                <label className="form-label">Adjustment Type</label>
+                <div className="flex gap-2 mb-3">
+                  <button
+                    className={`btn flex-1 ${adjustmentType === 'add' ? 'btn-success' : 'btn-secondary'}`}
+                    onClick={() => setAdjustmentType('add')}
+                  >
+                    <Plus size={16} className="mr-1" />
+                    Add Points
+                  </button>
+                  <button
+                    className={`btn flex-1 ${adjustmentType === 'deduct' ? 'btn-danger' : 'btn-secondary'}`}
+                    onClick={() => setAdjustmentType('deduct')}
+                  >
+                    <Minus size={16} className="mr-1" />
+                    Deduct Points
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label">
+                  Points to {adjustmentType === 'add' ? 'Add' : 'Deduct'}
+                </label>
                 <input
                   type="number"
                   className="form-input"
                   value={pointsAdjustment}
-                  onChange={(e) => setPointsAdjustment(parseInt(e.target.value) || 0)}
-                  placeholder="Enter points to add/subtract"
+                  onChange={(e) => setPointsAdjustment(Math.max(0, parseInt(e.target.value) || 0))}
+                  placeholder={`Enter points to ${adjustmentType}`}
+                  min="0"
                 />
               </div>
 
@@ -199,15 +268,19 @@ const UserManagement = () => {
                   value={adjustmentReason}
                   onChange={(e) => setAdjustmentReason(e.target.value)}
                   placeholder="Reason for adjustment"
+                  required
                 />
               </div>
 
               <div className="flex gap-3">
                 <button
-                  className="btn btn-primary flex-1"
+                  className={`btn flex-1 ${
+                    adjustmentType === 'add' ? 'btn-success' : 'btn-danger'
+                  }`}
                   onClick={() => handlePointsAdjustment(selectedUser.id, pointsAdjustment)}
+                  disabled={!pointsAdjustment || pointsAdjustment <= 0 || !adjustmentReason.trim()}
                 >
-                  Apply Adjustment
+                  {adjustmentType === 'add' ? 'Add' : 'Deduct'} {pointsAdjustment} Points
                 </button>
                 <button
                   className="btn btn-secondary flex-1"

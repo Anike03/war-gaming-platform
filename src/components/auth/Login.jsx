@@ -4,7 +4,7 @@ import { useAuth } from "../../hooks";
 import { Mail, Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
-  const { login, loginAdminOnly, googleSignIn } = useAuth();
+  const { login, googleSignIn, userData } = useAuth(); // Get userData from useAuth
   const nav = useNavigate();
   const loc = useLocation();
 
@@ -23,24 +23,17 @@ const Login = () => {
     setLoading(true);
     try {
       await login(email.trim(), pw);
+      
       if (remember) localStorage.setItem("rememberMe", "1");
       else localStorage.removeItem("rememberMe");
+      
+      // After successful login, the userData will be updated in the auth context
+      // Redirect based on the intended destination or user role
+      // Note: The role check should happen after the auth state updates
+      // For now, just redirect to the intended page
       nav(from, { replace: true });
     } catch (err) {
       setMsg(err?.message || "Wrong email or password.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdmin = async () => {
-    setMsg("");
-    setLoading(true);
-    try {
-      await loginAdminOnly();
-      nav("/admin", { replace: true });
-    } catch (err) {
-      setMsg(err?.message || "Admin login failed.");
     } finally {
       setLoading(false);
     }
@@ -85,7 +78,6 @@ const Login = () => {
             required
             autoFocus
           />
-          {/* decorative icon on the right */}
           <Mail size={18} className="icon icon-right" aria-hidden="true" />
         </div>
 
@@ -151,15 +143,8 @@ const Login = () => {
           <span>Continue with Google</span>
         </button>
 
-        {/* Admin quick login */}
-        <div className="help" style={{ marginTop: 10 }}>
-          <button type="button" onClick={handleAdmin} className="btn btn-ghost">
-            Admin Login (1-click)
-          </button>
-        </div>
-
         <div className="linkline">
-          Don’t have an account? <Link to="/register">Register</Link>
+          Don't have an account? <Link to="/register">Register</Link>
         </div>
       </form>
     </div>

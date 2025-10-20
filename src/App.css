@@ -273,10 +273,16 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
 /* Auth (Login / Register) — like your reference image --------------------- */
 .auth-shell{
   min-height: calc(100vh - 120px);
-  display:grid; place-items:center; padding: 2rem 1rem;
+  display: grid; 
+  place-items: center; 
+  padding: 2rem 1rem;
   background:
+    url('../src/assets/dk.jpg'),
     radial-gradient(900px 500px at 50% -8%, rgba(21,98,214,.22), transparent 60%),
     radial-gradient(800px 600px at 80% 0%, rgba(22,163,74,.12), transparent 70%);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
 }
 .auth-card{
   width:100%; max-width:460px;
