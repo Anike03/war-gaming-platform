@@ -4,7 +4,7 @@ import { Shield, Eye, Database, UserCheck, Lock, Mail } from 'lucide-react';
 import '../styles/privacy.css';
 
 const Privacy = () => {
-  const lastUpdated = "December 1, 2024";
+  const lastUpdated = "October 21, 2025";
 
   const sections = [
     {
