@@ -163,12 +163,14 @@ const GameModal = ({ game, onClose, onGameEnd }) => {
               </p>
               <div className="contact-developer">
                 <p>Want to see this game sooner?</p>
-                <button 
-                  className="btn btn-primary contact-btn"
-                  onClick={() => window.open('mailto:developer@example.com?subject=Request for ' + game.name + ' Game')}
-                >
-                  Contact Developer
-                </button>
+              <button
+                className="btn btn-primary contact-btn"
+                onClick={() => window.open(`mailto:"Aniket Sharma"<aniketsharma9360@gmail.com>?subject=Request for ${game.name} Game`)} 
+              >
+                Contact Developer
+              </button>
+
+
               </div>
               <div className="game-preview">
                 <h4>About {game.name}:</h4>
