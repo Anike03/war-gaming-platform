@@ -277,7 +277,7 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
   place-items: center; 
   padding: 2rem 1rem;
   background:
-    url('../src/assets/dk.jpg'),
+    url('../src/assets/new.jpg'),
     radial-gradient(900px 500px at 50% -8%, rgba(21,98,214,.22), transparent 60%),
     radial-gradient(800px 600px at 80% 0%, rgba(22,163,74,.12), transparent 70%);
   background-repeat: no-repeat;
@@ -286,9 +286,12 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
 }
 .auth-card{
   width:100%; max-width:460px;
-  background:
-      radial-gradient(600px 260px at 50% -40px, rgba(21,98,214,.18), rgba(0,0,0,0)),
-      linear-gradient(var(--panel), var(--panel-2));
+ background:
+  radial-gradient(620px 280px at 50% -50px, rgba(245, 241, 241, 0.705), rgba(0,0,0,0)),
+  linear-gradient(
+    color-mix(in srgb, var(--panel) 85%, #ffffff 15%),
+    color-mix(in srgb, var(--panel-2) 85%, #ffffff 15%)
+  );
   border:1px solid var(--line);
   border-radius: 16px;
   padding: 28px;
@@ -1118,7 +1121,7 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
   font-weight: 900;
   cursor: pointer;
 }
-.oauth-btn:hover{ background:#111c2a; }
+.oauth-btn:hover{ background:orangered; }
 .oauth-btn:disabled{ opacity:.7; cursor:not-allowed; }
 .oauth-google .oauth-icon{
   width: 18px; height: 18px;

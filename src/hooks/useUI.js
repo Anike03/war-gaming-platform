@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react'; // ✅ Added useEffect import
 
 // Hook for managing modal state
 export const useModal = (initialState = false) => {

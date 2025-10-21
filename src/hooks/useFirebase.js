@@ -11,6 +11,7 @@ import {
   where, 
   orderBy, 
   onSnapshot,
+  startAfter, // ✅ Added missing import
   limit
 } from 'firebase/firestore';
 import { db } from '../utils/firebase';
@@ -243,7 +244,7 @@ export const usePaginatedCollection = (collectionName, conditions = [], orderByF
       );
       
       if (lastDoc) {
-        q = query(q, startAfter(lastDoc));
+        q = query(q, startAfter(lastDoc)); // ✅ Fixed: using imported startAfter
       }
       
       const snapshot = await getDocs(q);
