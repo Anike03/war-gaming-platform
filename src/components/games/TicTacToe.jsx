@@ -233,11 +233,17 @@ const TicTacToe = ({ difficulty = 'easy', onGameEnd, onExit }) => {
     }
   }, [gameMode, players, currentRound, pointsPerWin, totalRounds]);
 
-  // Handle game end
+  // Handle game end - FIXED VERSION
   const handleGameEnd = useCallback(() => {
-    const finalWinner = scores.player1 > scores.player2 ? players.player1 : 
-                       scores.player2 > scores.player1 ? (gameMode === '2player' ? players.player2 : 'Bot') : 
-                       'Draw';
+    // Fix: Properly check for draw condition
+    let finalWinner = '';
+    if (scores.player1 === scores.player2) {
+      finalWinner = 'Draw';
+    } else {
+      finalWinner = scores.player1 > scores.player2 
+        ? players.player1 
+        : (gameMode === '2player' ? players.player2 : 'Bot');
+    }
     
     const finalResults = {
       winner: finalWinner,
@@ -551,7 +557,7 @@ const TicTacToe = ({ difficulty = 'easy', onGameEnd, onExit }) => {
     </div>
   );
 
-  // Render game end screen
+  // Render game end screen - UPDATED VERSION
   const renderGameEnd = () => (
     <div className="ttt-game-end">
       <div className="ttt-final-results">
@@ -564,6 +570,7 @@ const TicTacToe = ({ difficulty = 'easy', onGameEnd, onExit }) => {
             <>
               <div className="ttt-winner-icon">🤝</div>
               <h2>It's a Draw!</h2>
+              <p>Both players have equal points</p>
             </>
           ) : (
             <>
