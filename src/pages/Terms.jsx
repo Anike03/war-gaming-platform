@@ -91,41 +91,46 @@ const Terms = () => {
         <p>All content on WAR, including but not limited to:</p>
         <ul>
           <li>Games, graphics, and user interfaces</li>
-          <li>Logos, trademarks, and brand elements</li>
+          <li>Logos, trademarks, and branding</li>
           <li>Software code and platform architecture</li>
-          <li>Documentation and marketing materials</li>
+          <li>Documentation and support materials</li>
         </ul>
-        <p>is the property of WAR and protected by intellectual property laws.</p>
+        <p>are the property of WAR Gaming Inc. and are protected by intellectual property laws.</p>
         
         <h4>User Content</h4>
-        <p>By using our platform, you grant us a license to:</p>
+        <p>By posting content on our platform, you grant us a license to:</p>
         <ul>
-          <li>Display your profile information and game statistics</li>
-          <li>Showcase your scores on leaderboards</li>
-          <li>Use anonymized data for platform improvement</li>
+          <li>Display and distribute your content within the platform</li>
+          <li>Modify and adapt content for technical purposes</li>
+          <li>Use your content for platform operation and improvement</li>
         </ul>
-        
-        <p>You retain ownership of your personal content while granting us necessary rights to operate the platform.</p>
+        <p>You retain ownership of your original content while granting us these usage rights.</p>
       `
     },
     {
       icon: <AlertTriangle size={24} />,
       title: "Limitation of Liability",
       content: `
-        <h4>Platform Availability</h4>
-        <p>We strive to maintain 24/7 platform availability but cannot guarantee uninterrupted service. We may need to perform maintenance, updates, or address technical issues that may temporarily affect availability.</p>
+        <p>To the maximum extent permitted by law:</p>
         
-        <h4>No Warranty</h4>
-        <p>WAR is provided "as is" without warranties of any kind, either express or implied. We do not warrant that:</p>
+        <h4>Service Availability</h4>
+        <p>We provide WAR on an "as is" and "as available" basis. We do not guarantee:</p>
         <ul>
-          <li>The platform will meet your specific requirements</li>
-          <li>Service will be uninterrupted, timely, or error-free</li>
-          <li>Results obtained from using the platform will be accurate or reliable</li>
-          <li>Any errors in the platform will be corrected</li>
+          <li>Uninterrupted or error-free service</li>
+          <li>Immediate resolution of technical issues</li>
+          <li>Availability of specific games or features</li>
+          <li>Accuracy of leaderboard rankings in real-time</li>
         </ul>
         
-        <h4>Liability Cap</h4>
-        <p>To the maximum extent permitted by law, WAR shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use or inability to use the platform.</p>
+        <h4>Damages</h4>
+        <p>WAR Gaming Inc. shall not be liable for:</p>
+        <ul>
+          <li>Indirect, incidental, or consequential damages</li>
+          <li>Loss of data, points, or account access</li>
+          <li>Issues arising from third-party services</li>
+          <li>User interactions or disputes</li>
+          <li>Technical failures beyond our reasonable control</li>
+        </ul>
       `
     },
     {
@@ -133,24 +138,30 @@ const Terms = () => {
       title: "Termination and Suspension",
       content: `
         <h4>User Termination</h4>
-        <p>You may stop using our platform at any time. Account deletion requests can be made through the Contact Us page.</p>
+        <p>You may terminate your account at any time by:</p>
+        <ul>
+          <li>Contacting our support team</li>
+          <li>Requesting account deletion</li>
+          <li>Ceasing to use our platform</li>
+        </ul>
+        <p>Upon termination, your right to use WAR immediately ceases.</p>
         
         <h4>Platform Termination Rights</h4>
-        <p>We may suspend or terminate your account if:</p>
+        <p>We may suspend or terminate your access if:</p>
         <ul>
           <li>You violate these Terms of Service</li>
           <li>We suspect fraudulent or abusive activity</li>
           <li>Required by law or legal process</li>
-          <li>For platform security or integrity reasons</li>
+          <li>For platform security or maintenance reasons</li>
         </ul>
         
-        <h4>Effects of Termination</h4>
+        <h4>Effect of Termination</h4>
         <p>Upon termination:</p>
         <ul>
-          <li>Your right to use the platform immediately ceases</li>
-          <li>Any unused points will be forfeited</li>
+          <li>All earned points are forfeited</li>
+          <li>Pending reward redemptions may be cancelled</li>
           <li>Your profile and game data may be deleted</li>
-          <li>Pending reward redemptions may be canceled</li>
+          <li>Access to platform features is revoked</li>
         </ul>
       `
     }
@@ -175,7 +186,7 @@ const Terms = () => {
 
       {/* Quick Navigation */}
       <div className="terms-nav">
-        <h3>Table of Contents</h3>
+        <h3>Quick Navigation</h3>
         <div className="nav-links">
           {sections.map((section, index) => (
             <a 
@@ -184,7 +195,7 @@ const Terms = () => {
               className="nav-link"
             >
               {section.icon}
-              <span>{section.title}</span>
+              {section.title}
             </a>
           ))}
         </div>
@@ -214,27 +225,33 @@ const Terms = () => {
 
       {/* Important Notice */}
       <div className="important-notice">
-        <div className="notice-header">
-          <AlertTriangle size={32} />
-          <h3>Important Notice</h3>
+        <AlertTriangle size={32} className="notice-icon" />
+        <div className="notice-content">
+          <h3>Important Legal Notice</h3>
+          <p>
+            These Terms of Service constitute a legal agreement between you and WAR Gaming Inc. 
+            By using our platform, you acknowledge that you have read, understood, and agree to be bound by these terms. 
+            If you do not agree with any part of these terms, you must discontinue use of our services immediately.
+          </p>
+          <p>
+            For questions about these terms, contact our legal team at 
+            <a href="mailto:aniketsharma9360@gmail.com"> aniketsharma9360@gmail.com</a>.
+          </p>
         </div>
-        <p>
-          These Terms of Service constitute a legal agreement between you and WAR. 
-          By using our platform, you acknowledge that you have read, understood, 
-          and agree to be bound by these terms. If you do not agree with any part 
-          of these terms, please discontinue use of our platform immediately.
-        </p>
       </div>
 
       {/* Contact Section */}
       <div className="terms-contact">
         <div className="contact-card">
-          <h3>Questions About Our Terms?</h3>
+          <h3>Need Help Understanding Our Terms?</h3>
           <p>
-            If you have any questions or concerns about these Terms of Service, 
-            please contact our legal team for clarification.
+            If you have questions about these Terms of Service or need clarification on any section, 
+            our support team is here to help.
           </p>
-          <button className="btn btn-primary">Contact Legal Team</button>
+          <div className="contact-actions">
+            <a href="/contact" className="btn btn-primary">Contact Support</a>
+            <a href="/help" className="btn btn-secondary">Visit Help Center</a>
+          </div>
         </div>
       </div>
     </div>

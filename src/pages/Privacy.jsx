@@ -203,7 +203,7 @@ const Privacy = () => {
             please don't hesitate to contact our privacy team.
           </p>
           <div className="contact-actions">
-            <button className="btn btn-primary">Contact Privacy Team</button>
+            <a href="mailto:aniketsharma9360@gmail.com" className="btn btn-primary">Contact Privacy Team</a>
             <button className="btn btn-secondary">Data Request Form</button>
           </div>
         </div>

@@ -12,6 +12,10 @@ import Leaderboard from './pages/Leaderboard';
 import Redeem from './pages/Redeem';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import Help from './pages/Help';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import Contact from './pages/Contact';
 
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
@@ -20,12 +24,6 @@ import ForgotPassword from './components/auth/ForgotPassword';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminProtectedRoute from './components/auth/AdminProtectedRoute';
 import GameLoader from './components/games/GameLoader';
-
-import Help from './pages/Help';
-import Privacy from './pages/Privacy';
-import Terms from './pages/Terms';
-import Contact from './pages/Contact';
-
 
 import './App.css';
 import './styles/animations.css';
@@ -45,12 +43,13 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
-
+              
+              {/* Support Pages - Public */}
               <Route path="/help" element={<Help />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/contact" element={<Contact />} />
-              
+
               {/* Protected */}
               <Route
                 path="/leaderboard"
@@ -95,6 +94,16 @@ function App() {
                 }
               />
 
+              {/* Game Play */}
+              <Route
+                path="/play/:gameId"
+                element={
+                  <ProtectedRoute>
+                    <GameLoader />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* 404 */}
               <Route
                 path="*"
@@ -103,21 +112,13 @@ function App() {
                     <div className="card">
                       <h2 className="mb-3">Page not found</h2>
                       <p className="text-muted mb-4">
-                        The page you’re looking for doesn’t exist.
+                        The page you're looking for doesn't exist.
                       </p>
                       <a className="btn btn-primary" href="/">Go home</a>
                     </div>
                   </div>
                 }
               />
-              <Route
-  path="/play/:gameId"
-  element={
-    <ProtectedRoute>
-      <GameLoader />
-    </ProtectedRoute>
-  }
-/>
             </Routes>
           </main>
           <Footer />

@@ -151,14 +151,14 @@ const Help = () => {
       title: 'Email Support',
       description: 'Send us a detailed message',
       availability: 'Response within 24 hours',
-      action: 'Send Email'
+      action: 'mailto:aniketsharma9360@gmail.com'
     },
     {
       icon: <Phone size={24} />,
       title: 'Phone Support',
       description: 'Speak directly with our team',
       availability: 'Mon-Fri, 10 AM - 4 PM EST',
-      action: 'Call Now'
+      action: 'tel:+13659940303'
     }
   ];
 
@@ -195,7 +195,7 @@ const Help = () => {
               <h3>{method.title}</h3>
               <p>{method.description}</p>
               <div className="availability">{method.availability}</div>
-              <button className="contact-btn">{method.action}</button>
+              <a href={method.action} className="contact-btn">{method.action.includes('mailto') ? 'Send Email' : method.action.includes('tel') ? 'Call Now' : method.action}</a>
             </div>
           ))}
         </div>
@@ -257,7 +257,7 @@ const Help = () => {
             <h2>Still need help?</h2>
             <p>Can't find what you're looking for? Our support team is here to assist you.</p>
             <div className="help-actions">
-              <button className="btn btn-primary">Contact Support</button>
+              <a href="/contact" className="btn btn-primary">Contact Support</a>
               <button className="btn btn-secondary">Browse Documentation</button>
             </div>
           </div>

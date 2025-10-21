@@ -50,7 +50,7 @@ const Footer = () => {
               <a href="#" className="social-link" aria-label="Discord">
                 <MessageCircle size={18} />
               </a>
-              <a href="#" className="social-link" aria-label="Contact">
+              <a href="mailto:aniketsharma9360@gmail.com" className="social-link" aria-label="Contact">
                 <Mail size={18} />
               </a>
             </div>

@@ -19,17 +19,17 @@ const Contact = () => {
       icon: <Mail size={24} />,
       title: 'Email Support',
       description: 'Send us a detailed message',
-      contact: 'support@war-gaming.com',
+      contact: 'aniketsharma9360@gmail.com',
       response: 'Within 24 hours',
-      action: 'mailto:support@war-gaming.com'
+      action: 'mailto:aniketsharma9360@gmail.com'
     },
     {
       icon: <Phone size={24} />,
       title: 'Phone Support',
       description: 'Speak with our team directly',
-      contact: '+1 (555) 123-WAR9',
+      contact: '+1 (365) 994-0303',
       response: 'Mon-Fri, 10 AM - 4 PM EST',
-      action: 'tel:+15551239279'
+      action: 'tel:+13659940303'
     },
     {
       icon: <MessageCircle size={24} />,
@@ -296,7 +296,7 @@ const Contact = () => {
             We're here to help secure your account and resolve critical issues quickly.
           </p>
         </div>
-        <a href="tel:+15551239279" className="emergency-btn">
+        <a href="tel:+13659940303" className="emergency-btn">
           Call Now
         </a>
       </div>
