@@ -225,7 +225,12 @@ main{ flex:1; }
 }
 .brand-text{ font-weight:800; letter-spacing:.3px; color:#fff; }
 
-.nav-links{ display:flex; gap:.3rem; }
+.nav-links {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
 .nav-link{
   color:var(--text-dim); font-weight:900; text-transform:uppercase;
   font-size:.85rem; letter-spacing:.6px;
