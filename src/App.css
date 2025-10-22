@@ -126,6 +126,41 @@ main{ flex:1; }
 .badge-accent{ background: rgba(34,195,238,.14); color:#c9f3ff; border-color:#1b6f83; }
 .badge-danger{ background: rgba(239,68,68,.14); color:#ffc2c2; border-color:#8e2a2a; }
 
+/* Improve table responsiveness */
+@media (max-width: 768px) {
+  .table {
+    font-size: 0.875rem;
+  }
+  
+  .table thead th,
+  .table tbody td {
+    padding: 8px 6px;
+  }
+}
+
+/* Truncate long names */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  
+  .card {
+    padding: 14px;
+  }
+  
+  .wallet-badge {
+    font-size: 0.875rem;
+    padding: 6px 10px;
+  }
+}
 /* Buttons ----------------------------------------------------------------- */
 .btn{
   display:inline-flex; align-items:center; justify-content:center;
@@ -1857,4 +1892,16 @@ h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
   z-index: 55; /* behind the header (60), above the page */
   pointer-events: none;
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
