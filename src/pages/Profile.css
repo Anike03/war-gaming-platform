@@ -115,18 +115,124 @@
 /* Full-width rows */
 .middle-row, .bottom-row { width: 100%; }
 
-/* Cards */
-.profile-card, .stats-card, .milestones-card, .games-card {
+/* Base: make cards shrink and pad responsively */
+.profile-card,
+.stats-card,
+.milestones-card,
+.games-card {
   background: rgba(30, 41, 59, 0.8);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  padding: 2rem;
+  border-radius: clamp(12px, 3vw, 24px);
+  padding: clamp(1rem, 2vw + 0.75rem, 2rem);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
+
+  /* prevent flex/grid children from forcing overflow */
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-/* Equal heights for top-row cards */
+/* If you have a wrapper that holds multiple cards side-by-side */
+.cards-wrap,
+.profile-sections,
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: clamp(0.75rem, 2vw, 1.25rem);
+}
+.cards-wrap > * { grid-column: span 6; }     /* 2 per row on desktop */
+@media (max-width: 992px) {
+  .cards-wrap > * { grid-column: span 12; }  /* stack on tablet & mobile */
+}
+
+/* STAT GRID: auto-fit prevents overflow and packs nicely on small screens */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: clamp(0.75rem, 1.5vw, 1rem);
+  align-items: stretch;
+}
+
+/* If you prefer fixed breakpoints, keep this too for very small devices */
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);  /* 2-up on tiny screens */
+  }
+}
+
+/* Stat item content */
+.stat-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: clamp(0.75rem, 1.5vw, 1rem);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;           
+}
+
+.stat-icon {
+  flex: 0 0 auto;
+  width: clamp(28px, 5vw, 40px);
+  height: clamp(28px, 5vw, 40px);
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+}
+
+.stat-text {
+  min-width: 0;          
+}
+
+.stat-label {
+  font-size: clamp(0.75rem, 1.6vw, 0.9rem);
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-value {
+  font-weight: 700;
+  font-size: clamp(1rem, 3.8vw, 1.4rem);
+  color: #fff;
+  line-height: 1.2;
+  word-break: break-word;     
+}
+
+.profile-card h2,
+.stats-card h2,
+.milestones-card h2,
+.games-card h2 {
+  font-size: clamp(1rem, 3.5vw, 1.25rem);
+  margin-bottom: 0.75rem;
+}
+
+.card-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;   
+  min-width: 0;
+}
+
+.chips,
+.badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+html, body, .page, .profile-page {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+
 .profile-card, .stats-card { min-height: 550px; height: 100%; }
 
 .milestones-card.full-width, .games-card.full-width { width: 100%; }
@@ -142,7 +248,7 @@
 }
 .card-title svg { width: 24px; height: 24px; }
 
-/* Enhanced Milestones Header */
+
 .milestones-header {
   display: flex;
   justify-content: space-between;
