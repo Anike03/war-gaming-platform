@@ -229,11 +229,6 @@ MIT License © 2025 Aniketkumar Sharma
 
 All rights reserved for educational showcase.
 
-<div align="center">
 ⚔️ Ready to Rule?
-
 Play Now →
-
 Created with 💻 + ❤️ by Aniket Sharma
-
-</div> ```
