@@ -324,6 +324,7 @@ const QuizQuest = ({ difficulty = 'easy', onGameEnd, onExit }) => {
   const q = questions[idx];
   const progressPct = ((idx + 1) / questions.length) * 100;
   const isCorrectSel = selected === q.answer;
+  const letters = ['A', 'B', 'C', 'D'];
 
   return (
     <div className="quiz-shell">
@@ -377,6 +378,7 @@ const QuizQuest = ({ difficulty = 'easy', onGameEnd, onExit }) => {
             return (
               <button
                 key={i}
+                data-letter={letters[i]}
                 onClick={() => handleSelect(opt)}
                 disabled={showResult || isTransitioning}
                 className={`quiz-option
@@ -417,7 +419,7 @@ const QuizQuest = ({ difficulty = 'easy', onGameEnd, onExit }) => {
         {showResult && (
           <div
             className={`quiz-result-summary ${
-              isCorrectSel ? 'ok' : timeoutFlag ? 'timeout' : 'bad'
+              isCorrectSel ? 'correct' : timeoutFlag ? 'timeout' : 'incorrect'
             }`}
           >
             <div className="quiz-result-header">
@@ -430,7 +432,7 @@ const QuizQuest = ({ difficulty = 'easy', onGameEnd, onExit }) => {
               ) : timeoutFlag ? (
                 <>
                   <XCircle size={24} />
-                  <span>Time’s Up!</span>
+                  <span>Time's Up!</span>
                   <span className="points-earned">+0 points</span>
                 </>
               ) : (
